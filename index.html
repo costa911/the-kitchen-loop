@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recipe Companion</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f7f6f2; --surface: #fff; --border: #e5e3dc; --border-mid: #ccc9be;
+      --text: #1a1917; --text-muted: #6b6860; --text-faint: #a09d96;
+      --accent: #2d6a4f; --accent-light: #d8f3dc; --accent-text: #1b4332;
+      --danger: #e63946; --info: #3a86ff;
+      --radius: 10px; --radius-sm: 6px;
+      --shadow: 0 1px 3px rgba(0,0,0,0.06); --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; }
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 2rem; display: flex; align-items: center; justify-content: space-between; height: 56px; position: sticky; top: 0; z-index: 50; }
+    .logo { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+    nav { display: flex; gap: 4px; }
+    nav button { padding: 6px 14px; border-radius: 20px; border: none; background: transparent; color: var(--text-muted); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+    nav button:hover { background: var(--bg); color: var(--text); }
+    nav button.active { background: var(--text); color: var(--surface); }
+    main { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+    .view { display: none; } .view.active { display: block; }
+    .page-header { margin-bottom: 1.5rem; }
+    .page-header h1 { font-size: 22px; font-weight: 600; margin-bottom: 4px; }
+    .page-header p { font-size: 13px; color: var(--text-muted); }
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; box-shadow: var(--shadow); }
+    .stat-num { font-size: 28px; font-weight: 600; line-height: 1; margin-bottom: 4px; }
+    .stat-label { font-size: 12px; color: var(--text-muted); }
+    .toolbar { display: flex; gap: 10px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+    .toolbar input, .toolbar select { padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; }
+    .toolbar input { flex: 1; min-width: 180px; }
+    .recipe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+    .recipe-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; box-shadow: var(--shadow); }
+    .recipe-card:hover { border-color: var(--border-mid); box-shadow: var(--shadow-md); }
+    .recipe-card h3 { font-size: 13px; font-weight: 600; margin-bottom: 8px; line-height: 1.4; }
+    .tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+    .tag { font-size: 11px; padding: 2px 8px; border-radius: 20px; background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
+    .tag.dinner { background: #e8f4e8; color: #2d6a4f; border-color: transparent; }
+    .tag.pasta { background: #fff3e0; color: #8b5000; border-color: transparent; }
+    .tag.dessert { background: #fdf0fb; color: #8b2080; border-color: transparent; }
+    .tag.lunch { background: #e8f1ff; color: #1a4fa0; border-color: transparent; }
+    .tag.breakfast { background: #fff8e1; color: #8b6500; border-color: transparent; }
+    .cook-count { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
+    .cook-count.cooked { color: var(--accent); font-weight: 500; }
+    .card-ingredients { font-size: 11px; color: var(--text-faint); line-height: 1.5; margin-bottom: 6px; }
+    .empty-state { grid-column: 1 / -1; text-align: center; padding: 4rem 1rem; color: var(--text-muted); font-size: 14px; }
+    .empty-icon { font-size: 40px; margin-bottom: 1rem; opacity: 0.3; }
+    .form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow); max-width: 680px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+    .form-group input, .form-group textarea { padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; resize: vertical; }
+    .cat-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+    .cat-pill { font-size: 12px; padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); cursor: pointer; transition: all 0.15s; user-select: none; }
+    .cat-pill:hover { border-color: var(--border-mid); }
+    .cat-pill.selected { background: var(--text); color: var(--surface); border-color: var(--text); }
+    .btn { padding: 8px 18px; border-radius: var(--radius-sm); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; border: 1px solid transparent; }
+    .btn-primary { background: var(--text); color: var(--surface); }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-secondary { background: transparent; color: var(--text); border-color: var(--border); }
+    .btn-secondary:hover { background: var(--bg); }
+    .btn-danger { background: transparent; color: var(--danger); border-color: var(--border); }
+    .btn-danger:hover { background: #fff0f0; }
+    .btn-cook { background: var(--accent-light); color: var(--accent-text); border-color: transparent; font-weight: 600; padding: 8px 16px; }
+    .btn-cook:hover { background: #c2e8c8; }
+    .btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1rem; }
+    .plan-section-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin: 1.25rem 0 0.75rem; }
+    .plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+    .plan-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; position: relative; box-shadow: var(--shadow); }
+    .plan-day { font-size: 10px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; }
+    .plan-recipe { font-size: 12px; font-weight: 500; line-height: 1.4; }
+    .plan-remove { position: absolute; top: 6px; right: 8px; background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 16px; line-height: 1; padding: 0; }
+    .plan-remove:hover { color: var(--danger); }
+    .plan-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .plan-extras-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0 0.5rem; }
+    .plan-extra-card { border-radius: var(--radius); padding: 10px 12px; position: relative; box-shadow: var(--shadow); }
+    .plan-extra-lunch { background: #e8f4fd; border: 1px solid #b8d9f0; }
+    .plan-extra-dessert { background: #fdf0fb; border: 1px solid #e8c0e0; }
+    .plan-extra-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+    .shopping-section { margin-bottom: 2rem; }
+    .shopping-section h3 { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+    .shopping-items { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px; }
+    .shopping-item { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 5px 0; cursor: pointer; user-select: none; }
+    .shopping-item input[type=checkbox] { width: 15px; height: 15px; cursor: pointer; accent-color: var(--accent); flex-shrink: 0; }
+    .shopping-item.checked { text-decoration: line-through; color: var(--text-faint); }
+    .shopping-count { display: inline-flex; align-items: center; justify-content: center; background: var(--bg); border: 1px solid var(--border); border-radius: 20px; font-size: 11px; color: var(--text-muted); padding: 1px 8px; margin-left: 8px; font-weight: 500; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 100; align-items: center; justify-content: center; padding: 1rem; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--surface); border-radius: var(--radius); padding: 1.5rem; max-width: 560px; width: 100%; max-height: 88vh; overflow-y: auto; box-shadow: var(--shadow-md); position: relative; }
+    .modal-close { position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 22px; color: var(--text-faint); cursor: pointer; }
+    .modal-close:hover { color: var(--text); }
+    #modal-view h2 { font-size: 17px; font-weight: 600; margin-bottom: 10px; padding-right: 2rem; }
+    .modal-sec-label { font-size: 11px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin: 14px 0 6px; }
+    .modal-ingredients { font-size: 13px; color: var(--text-muted); line-height: 1.8; }
+    .modal-notes-box { font-size: 13px; color: var(--text-muted); font-style: italic; background: var(--bg); border-radius: var(--radius-sm); padding: 8px 12px; }
+    .cook-banner { display: flex; align-items: center; justify-content: space-between; background: var(--accent-light); border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 1rem; gap: 12px; }
+    .cook-banner-text { font-size: 13px; color: var(--accent-text); font-weight: 500; }
+    .modal-actions { display: flex; gap: 8px; margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid var(--border); flex-wrap: wrap; }
+    #modal-edit h2 { font-size: 15px; font-weight: 600; margin-bottom: 1rem; }
+    .edit-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+    .edit-group label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
+    .edit-group input, .edit-group textarea { padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; resize: vertical; }
+    .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--text); color: var(--surface); padding: 10px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; z-index: 200; opacity: 0; transform: translateY(6px); transition: opacity 0.25s, transform 0.25s; pointer-events: none; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .hint { font-size: 12px; color: var(--text-muted); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; margin-top: 1rem; line-height: 1.6; }
+    @media (max-width: 600px) { header { padding: 0 1rem; } .stats-row { grid-template-columns: 1fr 1fr; } .form-grid { grid-template-columns: 1fr; } main { padding: 1.25rem 1rem; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><div class="logo-dot"></div>Recipe Companion</div>
+  <nav>
+    <button class="active" onclick="showView('recipes')">&#127859; Recipes</button>
+    <button onclick="showView('add')">&#43; Add</button>
+    <button onclick="showView('plan')">&#128197; Plan</button>
+    <button onclick="showView('shopping')">&#128722; Shopping</button>
+  </nav>
+</header>
+
+<main>
+  <div id="view-recipes" class="view active">
+    <div class="page-header"><h1>My Recipes</h1><p>Click any recipe to view, edit or log a cook</p></div>
+    <div class="stats-row" id="stats-row"></div>
+    <div class="toolbar">
+      <input type="text" id="search-input" placeholder="Search by name or ingredient..." oninput="renderRecipes()" />
+      <select id="cat-filter" onchange="renderRecipes()">
+        <option value="">All categories</option>
+        <option value="Dinner">Dinner</option>
+        <option value="Pasta">Pasta</option>
+        <option value="Dessert">Dessert</option>
+        <option value="Lunch">Lunch</option>
+        <option value="Breakfast">Breakfast</option>
+      </select>
+      <select id="sort-filter" onchange="renderRecipes()">
+        <option value="name">Sort: A–Z</option>
+        <option value="cooks">Sort: Most cooked</option>
+        <option value="recent">Sort: Recently cooked</option>
+      </select>
+    </div>
+    <div class="recipe-grid" id="recipe-grid"></div>
+  </div>
+
+  <div id="view-add" class="view">
+    <div class="page-header"><h1>Add a Recipe</h1><p>Name and ingredients are required</p></div>
+    <div class="form-card">
+      <div class="form-grid">
+        <div class="form-group full"><label>Recipe name *</label><input type="text" id="new-name" placeholder="e.g. Butter Chicken" /></div>
+        <div class="form-group full">
+          <label>Categories (pick all that apply)</label>
+          <div class="cat-picker" id="new-cat-picker">
+            <span class="cat-pill" data-cat="Dinner" onclick="toggleCat(this)">Dinner</span>
+            <span class="cat-pill" data-cat="Pasta" onclick="toggleCat(this)">Pasta</span>
+            <span class="cat-pill" data-cat="Dessert" onclick="toggleCat(this)">Dessert</span>
+            <span class="cat-pill" data-cat="Lunch" onclick="toggleCat(this)">Lunch</span>
+            <span class="cat-pill" data-cat="Breakfast" onclick="toggleCat(this)">Breakfast</span>
+          </div>
+        </div>
+        <div class="form-group full"><label>Ingredients (comma separated) *</label><textarea id="new-ingredients" rows="3" placeholder="e.g. Chicken Breast, Garlic, Butter, Cream..."></textarea></div>
+        <div class="form-group"><label>Link (Instagram, YouTube...)</label><input type="text" id="new-link" placeholder="https://..." /></div>
+        <div class="form-group"><label>Notes</label><input type="text" id="new-notes" placeholder="Tips or reminders..." /></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="clearForm()">Clear</button>
+        <button class="btn btn-primary" onclick="addRecipe()">Save recipe</button>
+      </div>
+    </div>
+    <div class="hint">&#128161; Paste an Instagram link into Claude and ask it to extract the recipe — then copy the details here.</div>
+  </div>
+
+  <div id="view-plan" class="view">
+    <div class="page-header"><h1>Fortnightly Plan</h1><p>7 dinners per week, plus 1 lunch rotation and 1 dessert</p></div>
+    <div class="plan-actions">
+      <button class="btn btn-primary" onclick="generatePlan()">&#10024; Auto-generate</button>
+      <button class="btn btn-secondary" onclick="savePlanAndShop()">&#8594; Build shopping list</button>
+      <button class="btn btn-danger" onclick="clearPlan()">Clear plan</button>
+    </div>
+    <div id="plan-container"></div>
+  </div>
+
+  <div id="view-shopping" class="view">
+    <div class="page-header"><h1>Shopping List</h1><p>Generated from your current fortnight plan</p></div>
+    <div id="shopping-container"></div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="recipe-modal" onclick="handleModalClick(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">&#215;</button>
+    <div id="modal-view">
+      <h2 id="mv-title"></h2>
+      <div class="tags" id="mv-tags"></div>
+      <div class="cook-banner">
+        <span class="cook-banner-text" id="mv-cook-count">Never cooked</span>
+        <button class="btn btn-cook" onclick="logCook()">&#10003; Cooked it!</button>
+      </div>
+      <div class="modal-sec-label">Ingredients</div>
+      <p class="modal-ingredients" id="mv-ingredients"></p>
+      <div id="mv-notes-wrap" style="display:none"><div class="modal-sec-label">Notes</div><p class="modal-notes-box" id="mv-notes"></p></div>
+      <div class="modal-actions">
+        <a id="mv-link" href="#" target="_blank" class="btn btn-secondary" style="display:none;text-decoration:none;">View original &#8599;</a>
+        <button class="btn btn-secondary" onclick="switchToEdit()">&#9998; Edit</button>
+        <button class="btn btn-danger" onclick="deleteCurrentRecipe()">Delete</button>
+      </div>
+    </div>
+    <div id="modal-edit" style="display:none">
+      <h2>Edit recipe</h2>
+      <div class="edit-group"><label>Recipe name</label><input type="text" id="edit-name" /></div>
+      <div class="edit-group">
+        <label>Categories</label>
+        <div class="cat-picker" id="edit-cat-picker">
+          <span class="cat-pill" data-cat="Dinner" onclick="toggleCat(this)">Dinner</span>
+          <span class="cat-pill" data-cat="Pasta" onclick="toggleCat(this)">Pasta</span>
+          <span class="cat-pill" data-cat="Dessert" onclick="toggleCat(this)">Dessert</span>
+          <span class="cat-pill" data-cat="Lunch" onclick="toggleCat(this)">Lunch</span>
+          <span class="cat-pill" data-cat="Breakfast" onclick="toggleCat(this)">Breakfast</span>
+        </div>
+      </div>
+      <div class="edit-group"><label>Ingredients</label><textarea id="edit-ingredients" rows="3"></textarea></div>
+      <div class="edit-group"><label>Link</label><input type="text" id="edit-link" /></div>
+      <div class="edit-group"><label>Notes</label><input type="text" id="edit-notes" /></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="switchToView()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEdit()">Save changes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SK_R='rc_recipes_v4', SK_P='rc_plan_v4', SK_S='rc_shop_v4';
+const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
+const LUNCH_ROTATIONS=['Sweetcorn & Tuna Dip — crackers','Egg & Sardines Dip — crackers','Tomato Paste & Cucumbers — crackers','Ham & Cheese — bread or crackers','Bean Salad with lettuce','Leftovers from dinner'];
+const STAPLES=new Set(['Garlic','Onion','Olive Oil','Worcestershire Sauce','Worchestire Sauce','Milk','Any Mustard','Mustard','Soy Sauce','Black Pepper','Black Peppercorn','Cardamom','Cinnamon','Cloves','Aniseed','Fennel Seeds','Fish Sauce','Chilli','Grated Cheese','Pasta','Baking Powder','Cacao','Canned Chickpeas','Salt','Frozen Corn','Frozen Green Beans','Frozen Peas','Peanut Butter','Sesame Oil','Sesame Seeds','Sriracha','Siracha','Egg Noodles','Anchovies','Bay Leaves','Bay Leaf','Canned Tomatoes','Passata','Tomato Passata','Chicken Stock','Beef Stock','Vegetable Stock','Fish Stock','Cumin','Kunserva','Polenta','Red Wine','Eggs','Tahini','Mayonnaise','Ketchup','BBQ Sauce','Paprika Sweet','Paprika Smokey','Cous Cous','Canned Butter Beans','Canned Kidney Beans','Canned Tuna','Curry Powder','Panko Breadcrumbs','Balsamic Vinegar','Flour','Cornflour','Greek Yogurt','Nutmeg','Coconut Milk','Canned Coconut Milk','Dry Lentils','Turmeric','Garam Masala','Green Pesto','Red Pesto','Water','Rice Wine Vinegar','Baking Soda']);
+const FRESH=['fresh','lemon','lime','tomato','parsley','coriander','basil','mint','ginger','spring onion','cucumber','lettuce','carrot','celery','leek','potato','courgette','aubergine','broccoli','cauliflower','kale','spinach','mushroom','pepper','apple','bread','butter','cream','fish','chicken','beef','lamb','pork','sausage','salmon','white fish','mince','chorizo','pancetta','gammon','bacon','rotisserie','ricotta','feta','cheddar','parmesan','kefalyori','provolone','hard cheese','dumplings','leeks','frozen pepper','frozen spinach','frozen mushroom'];
+const DR=[
+  {name:'Chicken Pho',tags:'Dinner',ingredients:'Aniseed, Black Peppercorn, Cardamom, Cinnamon, Cloves, Egg Noodles, Fennel Seeds, Fish Sauce, Fresh Lime, Fresh Parsley, Fresh Chilli, Garlic, Ginger, Mustard Seeds, Onion, Rotisserie Chicken, Soy Sauce, Spring Onion, Water',notes:'',link:'https://www.instagram.com/reel/DN4b_V4kQUA/'},
+  {name:'Kale & Ricotta Pasta',tags:'Dinner, Pasta',ingredients:'Black Peppercorn, Garlic, Grated Cheese, Kale, Lemon Zest, Onion, Pasta, Ricotta',notes:'',link:'https://www.instagram.com/reel/DCN6Uo5MjND/'},
+  {name:'Chocolate Chickpea Cookies',tags:'Dessert',ingredients:'Any Chocolate, Any Milk, Baking Powder, Cacao, Canned Chickpeas, Maple Syrup, Salt, Vanilla Essence',notes:'Mix everything in blender, add milk little by little',link:''},
+  {name:'Soba Noodle Salad',tags:'Dinner',ingredients:'Frozen Corn, Frozen Green Beans, Frozen Peas, Frozen Peppers, Garlic, Onion, Peanut Butter, Peanuts, Rice Wine Vinegar, Sesame Oil, Sesame Seeds, Sriracha, Soba Noodles, Soy Sauce',notes:'',link:'https://www.instagram.com/reel/DEX9H1iSgum/'},
+  {name:'Chicken Cacciatore',tags:'Dinner',ingredients:'Anchovies, Bay Leaf, Black Peppercorn, Canned Peeled Tomatoes, Carrot, Chicken Drumsticks, Chicken Stock, Chicken Thighs, Cumin, Fennel Seeds, Garlic, Kunserva, Onion, Polenta, Red Wine, Rosemary, Thyme',notes:'',link:'https://www.instagram.com/reel/DA6kqlzR7HB/'},
+  {name:'Peas on Toast',tags:'Breakfast, Lunch',ingredients:'Black Peppercorn, Bread, Cumin, Eggs, Frozen Peas, Garlic, Lemon, Olive Oil, Tahini',notes:'',link:'https://www.instagram.com/reel/DEf5TFyNgfQ/'},
+  {name:'Egg and Potato Salad',tags:'Dinner',ingredients:'Apple Cider Vinegar, Cucumber, Eggs, Greek Yogurt, Mayonnaise, Mustard, Paprika Smokey, Paprika Sweet, Potato, Red Onion, Spring Onion',notes:'',link:'https://www.youtube.com/shorts/mhw8Eowrmqk'},
+  {name:'Lemon White Chocolate Brownie',tags:'Dessert',ingredients:'Baking Powder, Butter, Eggs, Icing Sugar, Lemon, Salt, Self Raising Flour, Sugar, Vanilla, White Chocolate',notes:'',link:'https://www.instagram.com/reel/DIUmgmMSIxd/'},
+  {name:'Lamb Greek Patties',tags:'Dinner',ingredients:'Balsamic Vinegar, Black Peppercorn, Butter Beans, Canned Chickpeas, Cous Cous, Cumin, Eggs, Fresh Mint, Fresh Parsley, Garlic, Kidney Beans, Lamb Mince, Lemon, Onion, Panko Breadcrumbs, Paprika Sweet, Rosemary',notes:'',link:'https://www.instagram.com/reel/DF98bjjTkZ5/'},
+  {name:'Peanut Crumbed Chicken',tags:'Dinner',ingredients:'Black Peppercorn, Curry Powder, Eggs, Flour, Panko Breadcrumbs, Peanuts, Salt',notes:"Serve with mac'n'cheese, cous cous, or chips",link:'https://www.instagram.com/reel/DGVQ7v-IYSf/'},
+  {name:'Chicken Milanesa',tags:'Dinner, Pasta',ingredients:'Balsamic Vinegar, Breadcrumbs, Chicken Breast, Eggs, Flour, Garlic, Grated Cheese, Onion, Panko Breadcrumbs, Paprika Sweet, Pasta, Rosemary, Thyme, Tomato Passata',notes:'',link:''},
+  {name:'Yorkshire Puddings',tags:'Dinner',ingredients:'Black Peppercorn, Butter, Eggs, Flour, Hard Cheese, Milk, Vegetable Oil',notes:'',link:'https://www.instagram.com/reel/DC9kDF2NRju/'},
+  {name:'Hungarian Mushroom Soup',tags:'Dinner',ingredients:'Beef Stock, Bread, Cornflour, Fresh Parsley, Frozen Mushrooms, Garlic, Greek Yogurt, Lemon, Mushroom Stock, Onion, Paprika Smokey, Paprika Sweet, Rosemary, Soy Sauce, Thyme, Worcestershire Sauce',notes:'',link:'https://www.instagram.com/reel/C73Iw4vMJyv/'},
+  {name:'Chorizo, Leek and Potato Soup',tags:'Dinner',ingredients:'Bay Leaf, Chorizo, Cornflour, Cumin, Fresh Parsley, Leeks, Paprika Sweet, Potato, Vegetable Stock',notes:'',link:'https://www.instagram.com/reel/DBea0lIttMX/'},
+  {name:'Tuna Pasta',tags:'Dinner, Pasta',ingredients:'Black Peppercorn, Egg Yolk, Garlic, Kunserva, Lemon, Pasta, Tuna',notes:'High protein',link:'https://www.instagram.com/reel/DCR1qR4uVc7/'},
+  {name:'Authentic (White) Bolognese',tags:'Dinner, Pasta',ingredients:'Beef Mince, Beef Stock, Carrot, Celery, Flour, Nutmeg, Onion, Pancetta, Pasta, Rosemary',notes:'',link:''},
+  {name:'Sausage & Peas Pasta',tags:'Dinner, Pasta',ingredients:'Cornflour, Frozen Peas, Garlic, Grated Cheese, Onion, Parmesan, Pasta, Pork Stock, Sausage',notes:'',link:'https://www.youtube.com/watch?v=hepwdT_Djng'},
+  {name:'Chilli Garlic Noodles',tags:'Dinner',ingredients:'Chilli, Chilli Crisp, Egg Noodles, Garlic, Ginger, Gochujang Paste, Mayonnaise, Rice Wine Vinegar, Soy Sauce, Spring Onion',notes:'',link:'https://www.instagram.com/reel/C53j30prcYB/'},
+  {name:'Crispy Pan Fried Fish',tags:'Dinner',ingredients:'Flour, Fresh Parsley, Frozen Green Beans, Lemon, Milk, Nutmeg, Paprika Smokey, Paprika Sweet, Potato, White Fish',notes:'',link:'https://www.instagram.com/p/BVVlf1CjiIb/'},
+  {name:'Courgette Lasagna',tags:'Dinner',ingredients:'Breadcrumbs, Courgette, Flour, Gammon, Garlic, Grated Cheese, Milk, Olives, Onion, Provolone',notes:'',link:'https://www.instagram.com/reel/ChKo2WuDeYO/'},
+  {name:'Chickpea Pita',tags:'Dinner, Lunch',ingredients:'Canned Chickpeas, Frozen Peppers, Garlic, Kunserva, Onion, Paprika Smokey, Paprika Sweet, Pitas',notes:'',link:'https://www.instagram.com/reel/CuXiplVKuA7/'},
+  {name:'Gochujang Noodles',tags:'Dinner',ingredients:'Broccoli, Dumplings, Egg Noodles, Gochujang Paste, Honey, Lime, Miso Paste, Rice Wine Vinegar, Sesame Seeds, Soy Sauce, Spring Onion, Tahini',notes:'',link:'https://www.instagram.com/reel/CxGX_2GKiCb/'},
+  {name:'Samkeh Harra',tags:'Dinner',ingredients:'Almonds, Chilli, Fresh Coriander, Garlic, Lemon, Paprika Smokey, Paprika Sweet, Sesame Oil, Sesame Seeds, Tahini, White Fish',notes:'Fish in Tahini Sauce',link:'https://www.instagram.com/reel/CuZit8tA-WS/'},
+  {name:'Thai Green Noodles',tags:'Dinner',ingredients:'Canned Coconut Milk, Carrot, Frozen Green Beans, Frozen Peppers, Green Curry Paste, Rice Noodles, Soy Sauce',notes:'',link:'https://www.instagram.com/reel/C145V87tYiY/'},
+  {name:'Smashed Burgers',tags:'Dinner',ingredients:'Beef Mince, Buns, Cheddar, Lettuce, Onion, Potato',notes:'',link:'https://www.instagram.com/reel/C3F_Ro-JrZk/'},
+  {name:'Pad Kra Pao',tags:'Dinner',ingredients:'Beef Mince, Chilli, Chinese Five Spice, Eggs, Fish Sauce, Fresh Basil, Garlic, Honey, Onion, Oyster Sauce, Rice, Sesame Oil, Soy Sauce, Spring Onion',notes:'',link:'https://www.instagram.com/reel/C0MlM1FrLYA/'},
+  {name:'Saag',tags:'Dinner',ingredients:'Coriander Powder, Cumin, Curry Powder, Fresh Tomatoes, Frozen Spinach, Garlic, Ginger, Lemon, Onion, Turmeric, Vegetable Stock, Yogurt',notes:'',link:'https://www.instagram.com/p/CMBH1JGgXan/'},
+  {name:'Burger Wraps',tags:'Dinner',ingredients:'Beef Mince, Fresh Tomatoes, Onion, Tortillas, Yogurt',notes:'',link:''},
+  {name:'Thai Drunken Noodles',tags:'Dinner',ingredients:'Chicken Thighs, Chilli, Fish Sauce, Fresh Basil, Garlic, Ginger, Honey, Onion, Oyster Sauce, Rice Noodles, Soy Sauce, Spring Onion',notes:'',link:'https://www.instagram.com/p/B4rNKPwHEAK/'},
+  {name:'Chicken Laksa',tags:'Dinner',ingredients:'Canned Coconut Milk, Chicken Drumsticks, Chicken Stock, Chilli, Curry Paste, Egg Noodles, Fish Sauce, Fresh Coriander, Frozen Green Beans, Garlic, Ginger, Sweet Corn',notes:'',link:'https://www.instagram.com/p/CJjtpxgAaul/'},
+  {name:'Peanut & Sweetcorn Fritters',tags:'Dinner',ingredients:'Baking Soda, Cornflour, Eggs, Flour, Fresh Coriander, Peanut Butter, Peanuts, Sesame Oil, Soy Sauce, Spring Onion, Sweet Corn',notes:'',link:'https://www.instagram.com/p/CNUX66YA_Jx/'},
+  {name:'Samosa Pie',tags:'Dinner',ingredients:'Cauliflower, Coriander Powder, Curry Powder, Fennel Seeds, Frozen Peas, Frozen Spinach, Garlic, Ginger, Lime, Onion, Pastry, Potato, Spring Onion, Turmeric, Vegetable Stock',notes:'',link:'https://www.instagram.com/tv/CSo7mWwIO79/'},
+  {name:'Aubergine Katsu Curry',tags:'Dinner',ingredients:'Aubergine, Carrot, Cornflour, Curry Powder, Eggs, Garam Masala, Garlic, Ginger, Honey, Lemon, Onion, Panko Breadcrumbs, Sesame Oil, Sesame Seeds, Soy Sauce, Spring Onion, Vegetable Stock',notes:'',link:'https://www.instagram.com/tv/CBlTVnCIpkK/'},
+  {name:'Chicken Satay Curry',tags:'Dinner',ingredients:'Canned Coconut Milk, Cayenne Pepper, Chicken Stock, Chicken Thighs, Coriander Powder, Cumin, Curry Powder, Garlic, Honey, Lime, Onion, Paprika Smokey, Paprika Sweet, Peanut Butter, Peanuts, Soy Sauce, Turmeric',notes:'',link:'https://www.instagram.com/tv/CY9hPTeB-he/'},
+  {name:'Butter Chicken',tags:'Dinner',ingredients:'Butter, Cashew Nuts, Cayenne Pepper, Chicken Breast, Coriander Powder, Cumin, Fresh Coriander, Fresh Parsley, Fresh Tomatoes, Garam Masala, Garlic, Ginger, Lemon, Onion, Yogurt',notes:'',link:'https://www.instagram.com/reel/CmldeiFtlmV/'},
+  {name:'Pad Thai',tags:'Dinner',ingredients:'Brown Sugar, Cayenne Pepper, Chicken Breast, Eggs, Fish Sauce, Garlic, Lime, Onion, Oyster Sauce, Peanuts, Rice Noodles, Spring Onion, Tamarind Puree',notes:'',link:'https://www.instagram.com/reel/C3Epq0xvtlW/'},
+  {name:'Coconut Daal',tags:'Dinner',ingredients:'Black Peppercorn, Canned Coconut Milk, Canned Tomatoes, Cayenne Pepper, Curry Powder, Fresh Coriander, Fresh Parsley, Frozen Peas, Garlic, Ginger, Onion, Red Lentils, Turmeric, Yogurt',notes:'',link:'https://www.instagram.com/p/CNmJK6KgxB0/'},
+  {name:'Chettinad Chicken Curry',tags:'Dinner',ingredients:'Bay Leaf, Black Peppercorn, Canned Tomatoes, Cardamom, Chicken Thighs, Chilli, Cinnamon, Cloves, Coriander Powder, Cumin, Fennel Seeds, Garlic, Ginger, Grated Coconut, Lemon, Onion, Turmeric',notes:'',link:'https://www.instagram.com/reel/C3TKZSnIAdn/'},
+  {name:'Salmon En Croute',tags:'Dinner',ingredients:'Eggs, Frozen Spinach, Garlic, Onion, Pastry, Red Pesto, Salmon Fillet',notes:'',link:'https://www.instagram.com/tv/CKjp_uND7uD/'},
+  {name:'Salmon Curry',tags:'Dinner',ingredients:'Canned Coconut Milk, Cayenne Pepper, Coriander Powder, Fresh Tomatoes, Garlic, Ginger, Mustard Seeds, Onion, Salmon Fillet, Turmeric',notes:'',link:'https://www.instagram.com/reel/CbMpTguj-tq/'},
+  {name:'Daal Makhani',tags:'Dinner',ingredients:'Cayenne Pepper, Garam Masala, Garlic, Rice, Tomato Passata, Tomato Paste, Turmeric',notes:'',link:'https://www.instagram.com/reel/Cg81H_CoQpr/'},
+  {name:'Dry Rub Chicken',tags:'Dinner',ingredients:'Allspice, Cardamom, Cayenne Pepper, Chicken Drumsticks, Cornflour, Garlic Powder, Ginger, Nutmeg, Paprika Smokey, Paprika Sweet',notes:'',link:'https://www.instagram.com/p/B_fRMlHAB8V/'},
+  {name:'Pasta Carbonara',tags:'Dinner, Pasta',ingredients:'Eggs, Hard Cheese, Pancetta, Pasta',notes:'',link:'https://www.instagram.com/reel/CcA0GOwlcwk/'},
+  {name:'Burnt Leeks & Cannellini Bean Soup',tags:'Dinner',ingredients:'Bread, Cannellini Beans, Flour, Garlic, Leeks, Milk, Nutritional Yeast, Rosemary, White Wine',notes:'',link:'https://www.instagram.com/reel/CvR14mcqGB5/'},
+  {name:'Chilli in a Taco Shell',tags:'Dinner',ingredients:'Bell Peppers, Black Beans, Chilli, Coriander Powder, Cumin, Fresh Tomatoes, Garlic, Kidney Beans, Lime, Onion, Paprika Smokey, Paprika Sweet, Parsley, Rice, Tomato Passata, Tomato Paste, Tortillas',notes:'',link:'https://www.instagram.com/tv/COaKK23NWlB/'},
+  {name:'Broccoli & Feta Pie',tags:'Dinner',ingredients:'Broccoli, Feta, Eggs, Kefalyori, Milk, Greek Yogurt, Olive Oil, Flour',notes:'',link:'https://www.instagram.com/reel/DRr5fa3jERQ/'},
+];
+
+let recipes=[], plan=[], shoppingChecked={}, activeModalId=null;
+
+function loadData() {
+  try {
+    const r=localStorage.getItem(SK_R);
+    if(r){ recipes=JSON.parse(r); recipes.forEach(r=>{if(r.cookCount===undefined)r.cookCount=0;if(r.lastCooked===undefined)r.lastCooked=null;}); }
+    else { recipes=DR.map((x,i)=>({...x,id:i+1,cookCount:0,lastCooked:null})); saveR(); }
+  } catch(e){ recipes=DR.map((x,i)=>({...x,id:i+1,cookCount:0,lastCooked:null})); }
+  try{ plan=JSON.parse(localStorage.getItem(SK_P)||'[]'); }catch(e){ plan=[]; }
+  try{ shoppingChecked=JSON.parse(localStorage.getItem(SK_S)||'{}'); }catch(e){ shoppingChecked={}; }
+  renderAll();
+}
+function saveR(){ localStorage.setItem(SK_R,JSON.stringify(recipes)); }
+function saveP(){ localStorage.setItem(SK_P,JSON.stringify(plan)); }
+function saveS(){ localStorage.setItem(SK_S,JSON.stringify(shoppingChecked)); }
+function renderAll(){ renderStats(); renderRecipes(); renderPlan(); renderShopping(); }
+
+function renderStats(){
+  const cooked=recipes.filter(r=>r.cookCount>0).length;
+  const total=recipes.reduce((a,r)=>a+(r.cookCount||0),0);
+  const cats=new Set(recipes.flatMap(r=>r.tags.split(',').map(t=>t.trim()))).size;
+  document.getElementById('stats-row').innerHTML=`
+    <div class="stat-card"><div class="stat-num">${recipes.length}</div><div class="stat-label">Total recipes</div></div>
+    <div class="stat-card"><div class="stat-num">${cooked}</div><div class="stat-label">Ever cooked</div></div>
+    <div class="stat-card"><div class="stat-num">${total}</div><div class="stat-label">Total cook logs</div></div>
+    <div class="stat-card"><div class="stat-num">${cats}</div><div class="stat-label">Categories</div></div>`;
+}
+
+function tc(t){ const m={'Dinner':'dinner','Pasta':'pasta','Dessert':'dessert','Lunch':'lunch','Breakfast':'breakfast'}; return m[t.trim()]||''; }
+
+function renderRecipes(){
+  const q=document.getElementById('search-input').value.toLowerCase();
+  const cat=document.getElementById('cat-filter').value;
+  const sort=document.getElementById('sort-filter').value;
+  let f=recipes.filter(r=>{
+    const mq=!q||r.name.toLowerCase().includes(q)||r.ingredients.toLowerCase().includes(q);
+    const mc=!cat||r.tags.split(',').map(t=>t.trim()).includes(cat);
+    return mq&&mc;
+  });
+  if(sort==='cooks') f.sort((a,b)=>(b.cookCount||0)-(a.cookCount||0));
+  else if(sort==='recent') f.sort((a,b)=>(b.lastCooked||'')>(a.lastCooked||'')?1:-1);
+  else f.sort((a,b)=>a.name.localeCompare(b.name));
+  const grid=document.getElementById('recipe-grid');
+  if(!f.length){grid.innerHTML='<div class="empty-state"><div class="empty-icon">&#127859;</div>No recipes found</div>';return;}
+  grid.innerHTML=f.map(r=>`
+    <div class="recipe-card" onclick="openModal(${r.id})">
+      <h3>${r.name}</h3>
+      <div class="tags">${r.tags.split(',').map(t=>`<span class="tag ${tc(t)}">${t.trim()}</span>`).join('')}</div>
+      <p class="card-ingredients">${r.ingredients.split(',').slice(0,5).map(i=>i.trim()).join(', ')}${r.ingredients.split(',').length>5?'&hellip;':''}</p>
+      <p class="cook-count ${r.cookCount>0?'cooked':''}">${r.cookCount>0?`Cooked ${r.cookCount}\xd7`:'Not cooked yet'}</p>
+    </div>`).join('');
+}
+
+function openModal(id){
+  const r=recipes.find(x=>x.id===id); if(!r) return;
+  activeModalId=id;
+  document.getElementById('mv-title').textContent=r.name;
+  document.getElementById('mv-tags').innerHTML=r.tags.split(',').map(t=>`<span class="tag ${tc(t)}">${t.trim()}</span>`).join('');
+  const cc=document.getElementById('mv-cook-count');
+  cc.textContent=r.cookCount>0?`Cooked ${r.cookCount} time${r.cookCount>1?'s':''}`+(r.lastCooked?' · Last: '+new Date(r.lastCooked).toLocaleDateString():''):'Never cooked yet';
+  document.getElementById('mv-ingredients').textContent=r.ingredients;
+  const nw=document.getElementById('mv-notes-wrap');
+  if(r.notes){document.getElementById('mv-notes').textContent=r.notes;nw.style.display='block';}else{nw.style.display='none';}
+  const lnk=document.getElementById('mv-link');
+  if(r.link){lnk.href=r.link;lnk.style.display='inline-flex';}else{lnk.style.display='none';}
+  document.getElementById('modal-view').style.display='block';
+  document.getElementById('modal-edit').style.display='none';
+  document.getElementById('recipe-modal').classList.add('open');
+}
+
+function closeModal(){ document.getElementById('recipe-modal').classList.remove('open'); activeModalId=null; }
+function handleModalClick(e){ if(e.target===document.getElementById('recipe-modal')) closeModal(); }
+
+function logCook(){
+  const r=recipes.find(x=>x.id===activeModalId); if(!r) return;
+  r.cookCount=(r.cookCount||0)+1; r.lastCooked=new Date().toISOString();
+  saveR(); openModal(activeModalId); renderStats(); renderRecipes();
+  showToast(`Logged! ${r.name} cooked ${r.cookCount}\xd7`);
+}
+
+function switchToEdit(){
+  const r=recipes.find(x=>x.id===activeModalId); if(!r) return;
+  document.getElementById('edit-name').value=r.name;
+  document.getElementById('edit-ingredients').value=r.ingredients;
+  document.getElementById('edit-link').value=r.link||'';
+  document.getElementById('edit-notes').value=r.notes||'';
+  const cur=r.tags.split(',').map(t=>t.trim());
+  document.querySelectorAll('#edit-cat-picker .cat-pill').forEach(p=>p.classList.toggle('selected',cur.includes(p.dataset.cat)));
+  document.getElementById('modal-view').style.display='none';
+  document.getElementById('modal-edit').style.display='block';
+}
+
+function switchToView(){ document.getElementById('modal-view').style.display='block'; document.getElementById('modal-edit').style.display='none'; }
+
+function saveEdit(){
+  const r=recipes.find(x=>x.id===activeModalId); if(!r) return;
+  const name=document.getElementById('edit-name').value.trim();
+  const ingredients=document.getElementById('edit-ingredients').value.trim();
+  if(!name||!ingredients){showToast('Name and ingredients required');return;}
+  const cats=[...document.querySelectorAll('#edit-cat-picker .cat-pill.selected')].map(p=>p.dataset.cat);
+  r.name=name; r.tags=cats.length?cats.join(', '):'Dinner';
+  r.ingredients=ingredients; r.link=document.getElementById('edit-link').value.trim(); r.notes=document.getElementById('edit-notes').value.trim();
+  saveR(); renderAll(); openModal(activeModalId); showToast('Recipe updated!');
+}
+
+function deleteCurrentRecipe(){
+  if(!activeModalId) return;
+  if(!confirm('Delete this recipe? Cannot be undone.')) return;
+  recipes=recipes.filter(r=>r.id!==activeModalId); saveR(); closeModal(); renderAll(); showToast('Recipe deleted');
+}
+
+function toggleCat(el){ el.classList.toggle('selected'); }
+
+function showView(v){
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('nav button')[['recipes','add','plan','shopping'].indexOf(v)].classList.add('active');
+}
+
+function addRecipe(){
+  const name=document.getElementById('new-name').value.trim();
+  const ingredients=document.getElementById('new-ingredients').value.trim();
+  if(!name||!ingredients){showToast('Name and ingredients are required');return;}
+  const cats=[...document.querySelectorAll('#new-cat-picker .cat-pill.selected')].map(p=>p.dataset.cat);
+  recipes.push({id:Date.now(),name,tags:cats.length?cats.join(', '):'Dinner',ingredients,notes:document.getElementById('new-notes').value.trim(),link:document.getElementById('new-link').value.trim(),cookCount:0,lastCooked:null});
+  saveR(); clearForm(); renderAll(); showToast('Recipe saved!'); showView('recipes');
+}
+
+function clearForm(){
+  ['new-name','new-ingredients','new-notes','new-link'].forEach(id=>document.getElementById(id).value='');
+  document.querySelectorAll('#new-cat-picker .cat-pill').forEach(p=>p.classList.remove('selected'));
+}
+
+function generatePlan(){
+  const isDessert=r=>r.tags.split(',').map(t=>t.trim()).includes('Dessert');
+  const dinners=recipes.filter(r=>!isDessert(r));
+  const desserts=recipes.filter(r=>isDessert(r));
+  if(dinners.length<14){showToast('Need at least 14 non-dessert recipes');return;}
+  const sd=[...dinners].sort(()=>Math.random()-0.5);
+  const sx=[...desserts].sort(()=>Math.random()-0.5);
+  const sl=[...LUNCH_ROTATIONS].sort(()=>Math.random()-0.5);
+  plan=[];
+  for(let w=1;w<=2;w++){
+    const off=(w-1)*7;
+    DAYS.forEach((day,i)=>plan.push({type:'dinner',week:w,day,recipeId:sd[off+i].id,recipeName:sd[off+i].name}));
+    plan.push({type:'lunch',week:w,day:'',recipeId:null,recipeName:sl[(w-1)%sl.length]});
+    const dx=sx[(w-1)%(sx.length||1)];
+    plan.push({type:'dessert',week:w,day:'',recipeId:dx?dx.id:null,recipeName:dx?dx.name:'No desserts added yet'});
+  }
+  saveP(); renderPlan(); showToast('Fortnight generated!');
+}
+
+function clearPlan(){ plan=[]; saveP(); renderPlan(); showToast('Plan cleared'); }
+function removePlanItem(i){ plan.splice(i,1); saveP(); renderPlan(); }
+
+function renderPlan(){
+  const c=document.getElementById('plan-container');
+  if(!plan.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">&#128197;</div>Hit "Auto-generate" to build your fortnight</div>';return;}
+  const rw=w=>{
+    const dinners=plan.map((p,i)=>({...p,i})).filter(p=>p.week===w&&p.type==='dinner');
+    const lunch=plan.map((p,i)=>({...p,i})).find(p=>p.week===w&&p.type==='lunch');
+    const dessert=plan.map((p,i)=>({...p,i})).find(p=>p.week===w&&p.type==='dessert');
+    return `
+      <div class="plan-section-label">Week ${w} — Dinners</div>
+      <div class="plan-grid">${dinners.map(p=>`<div class="plan-card"><button class="plan-remove" onclick="removePlanItem(${p.i})">&#215;</button><div class="plan-day">${p.day}</div><div class="plan-recipe">${p.recipeName}</div></div>`).join('')}</div>
+      <div class="plan-extras-row">
+        <div class="plan-extra-card plan-extra-lunch">${lunch?`<button class="plan-remove" onclick="removePlanItem(${lunch.i})">&#215;</button>`:''}<div class="plan-extra-label">&#127828; Lunch rotation</div><div class="plan-recipe">${lunch?lunch.recipeName:'—'}</div></div>
+        <div class="plan-extra-card plan-extra-dessert">${dessert?`<button class="plan-remove" onclick="removePlanItem(${dessert.i})">&#215;</button>`:''}<div class="plan-extra-label">&#127874; Dessert of the week</div><div class="plan-recipe">${dessert?dessert.recipeName:'—'}</div></div>
+      </div>`;
+  };
+  c.innerHTML=rw(1)+rw(2);
+}
+
+function savePlanAndShop(){ renderShopping(); showView('shopping'); }
+function isFresh(i){ const l=i.toLowerCase(); return FRESH.some(k=>l.includes(k)); }
+
+function renderShopping(){
+  const c=document.getElementById('shopping-container');
+  if(!plan.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">&#128722;</div>Generate a plan first</div>';return;}
+  const allIng=new Map();
+  plan.filter(p=>p.type==='dinner'||p.type==='dessert').forEach(p=>{
+    const r=recipes.find(x=>x.id===p.recipeId); if(!r) return;
+    r.ingredients.split(',').forEach(ing=>{ const cl=ing.trim(); if(!allIng.has(cl)) allIng.set(cl,[]); allIng.get(cl).push(r.name); });
+  });
+  const toBuy=[],stapleCheck=[];
+  allIng.forEach((_,ing)=>{ if(STAPLES.has(ing)) stapleCheck.push(ing); else toBuy.push(ing); });
+  const fresh=toBuy.filter(isFresh).sort();
+  const big=toBuy.filter(i=>!isFresh(i)).sort();
+  stapleCheck.sort();
+  const ri=items=>`<div class="shopping-items">${items.map(i=>{const k=i.replace(/'/g,"\\'");return `<label class="shopping-item${shoppingChecked[i]?' checked':''}"><input type="checkbox" ${shoppingChecked[i]?'checked':''} onchange="toggleCheck('${k}',this.checked)" />${i}</label>`;}).join('')}</div>`;
+  c.innerHTML=`
+    <div class="shopping-section"><h3>Big shop <span class="shopping-count">${big.length}</span></h3>${ri(big)}</div>
+    <div class="shopping-section"><h3>Fresh top-ups <span class="shopping-count">${fresh.length}</span></h3>${ri(fresh)}</div>
+    <div class="shopping-section"><h3>Staples to check <span class="shopping-count">${stapleCheck.length}</span></h3>${ri(stapleCheck)}</div>
+    <div style="margin-top:1rem;"><button class="btn btn-secondary" onclick="clearChecks()">Clear all ticks</button></div>`;
+}
+
+function toggleCheck(item,checked){ shoppingChecked[item]=checked; saveS(); document.querySelectorAll('.shopping-item').forEach(el=>{ if(el.textContent.trim()===item) el.classList.toggle('checked',checked); }); }
+function clearChecks(){ shoppingChecked={}; saveS(); renderShopping(); }
+function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+
+loadData();
+</script>
+</body>
+</html>
