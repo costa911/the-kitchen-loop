@@ -55,6 +55,8 @@
     .tag.dessert { background: #fdf0fb; color: #8b2080; border-color: transparent; }
     .tag.lunch { background: #e8f1ff; color: #1a4fa0; border-color: transparent; }
     .tag.breakfast { background: #fff8e1; color: #8b6500; border-color: transparent; }
+    .tag.side { background: #f0ede8; color: #6b5a3e; border-color: transparent; }
+    .plan-side-note { font-size: 10px; color: #6b5a3e; background: #f0ede8; border-radius: 4px; padding: 2px 6px; margin-top: 4px; display: inline-block; }
     .cook-count { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
     .cook-count.cooked { color: var(--accent); font-weight: 500; }
     .card-ingredients { font-size: 11px; color: var(--text-faint); line-height: 1.5; margin-bottom: 6px; }
@@ -153,6 +155,17 @@
     .edit-group label { font-size: 12px; font-weight: 500; color: var(--text-muted); }
     .edit-group input, .edit-group textarea { padding: 8px 11px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; outline: none; resize: vertical; }
 
+    /* Sides popup */
+    .sides-popup { background: var(--surface); border-radius: var(--radius); padding: 1.5rem; max-width: 500px; width: 100%; box-shadow: var(--shadow-md); position: relative; }
+    .sides-popup h2 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    .sides-popup p { font-size: 13px; color: var(--text-muted); margin-bottom: 1rem; }
+    .side-suggestion { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; }
+    .side-suggestion label { display: flex; align-items: center; gap: 10px; cursor: pointer; width: 100%; font-size: 13px; }
+    .side-suggestion input[type=checkbox] { width: 15px; height: 15px; accent-color: var(--accent); flex-shrink: 0; }
+    .side-suggestion-text { line-height: 1.4; }
+    .side-dinner { font-size: 11px; color: var(--text-muted); }
+    .side-name { font-weight: 500; }
+
     .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--text); color: var(--surface); padding: 10px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; z-index: 200; opacity: 0; transform: translateY(6px); transition: opacity 0.25s, transform 0.25s; pointer-events: none; }
     .toast.show { opacity: 1; transform: translateY(0); }
     .hint { font-size: 12px; color: var(--text-muted); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; margin-top: 1rem; line-height: 1.6; }
@@ -225,6 +238,7 @@
         <option value="Dessert">Dessert</option>
         <option value="Lunch">Lunch</option>
         <option value="Breakfast">Breakfast</option>
+        <option value="Side">Side</option>
       </select>
       <select id="sort-filter" onchange="renderRecipes()">
         <option value="name">Sort: A–Z</option>
@@ -273,11 +287,13 @@
             <span class="cat-pill" data-cat="Dessert" onclick="toggleCat(this)">Dessert</span>
             <span class="cat-pill" data-cat="Lunch" onclick="toggleCat(this)">Lunch</span>
             <span class="cat-pill" data-cat="Breakfast" onclick="toggleCat(this)">Breakfast</span>
+            <span class="cat-pill" data-cat="Side" onclick="toggleCat(this)">Side</span>
           </div>
         </div>
         <div class="form-group full"><label>Ingredients (comma separated) *</label><textarea id="new-ingredients" rows="3" placeholder="e.g. Chicken Breast, Garlic, Butter, Cream..."></textarea></div>
         <div class="form-group"><label>Link (Instagram, YouTube...)</label><input type="text" id="new-link" placeholder="https://..." /></div>
         <div class="form-group"><label>Notes</label><input type="text" id="new-notes" placeholder="Tips or reminders..." /></div>
+        <div class="form-group full"><label>Pairs with (for Sides — enter recipe name exactly, comma separated)</label><input type="text" id="new-pairswith" placeholder="e.g. Dry Rub Chicken, Smashed Burgers" /></div>
       </div>
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="clearForm()">Clear</button>
@@ -340,11 +356,13 @@
           <span class="cat-pill" data-cat="Dessert" onclick="toggleCat(this)">Dessert</span>
           <span class="cat-pill" data-cat="Lunch" onclick="toggleCat(this)">Lunch</span>
           <span class="cat-pill" data-cat="Breakfast" onclick="toggleCat(this)">Breakfast</span>
+          <span class="cat-pill" data-cat="Side" onclick="toggleCat(this)">Side</span>
         </div>
       </div>
       <div class="edit-group"><label>Ingredients</label><textarea id="edit-ingredients" rows="3"></textarea></div>
       <div class="edit-group"><label>Link</label><input type="text" id="edit-link" /></div>
       <div class="edit-group"><label>Notes</label><input type="text" id="edit-notes" /></div>
+      <div class="edit-group"><label>Pairs with (for Sides — enter recipe name exactly, comma separated)</label><input type="text" id="edit-pairswith" placeholder="e.g. Dry Rub Chicken, Smashed Burgers" /></div>
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="switchToView()">Cancel</button>
         <button class="btn btn-primary" onclick="saveEdit()">Save changes</button>
@@ -353,7 +371,22 @@
   </div>
 </div>
 
-<div id="print-wrapper" style="display:none;">
+<div class="modal-overlay" id="sides-modal" onclick="handleSidesModalClick(event)">
+  <div class="sides-popup">
+    <h2>&#127869;&#65039; Suggested Sides</h2>
+    <p>Based on your dinner plan — would you like to prep any of these sides?</p>
+    <div id="sides-suggestions"></div>
+    <div class="btn-row" style="justify-content:space-between; margin-top:1rem;">
+      <button class="btn btn-danger" onclick="closeSidesModal()">Skip</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary" onclick="addSelectedSides()">Add selected</button>
+        <button class="btn btn-primary" onclick="addAllSides()">Add all</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="print-wrapper" id="print-wrapper" style="display:none;">
   <div id="pdf-page"></div>
 </div>
 
@@ -363,7 +396,7 @@
 const SK_R='rc_recipes_v5', SK_P='rc_plan_v5', SK_S='rc_shop_v5';
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const LUNCH_ROTATIONS=['Sweetcorn & Tuna Dip — crackers','Egg & Sardines Dip — crackers','Tomato Paste & Cucumbers — crackers','Ham & Cheese — bread or crackers','Bean Salad with lettuce','Leftovers from dinner'];
-const CAT_ICONS={'Dinner':'🍽️','Pasta':'🍝','Dessert':'🍰','Lunch':'🥗','Breakfast':'🍳'};
+const CAT_ICONS={'Dinner':'🍽️','Pasta':'🍝','Dessert':'🍰','Lunch':'🥗','Breakfast':'🍳','Side':'🥗'};
 const STAPLES=new Set(['Garlic','Onion','Olive Oil','Worcestershire Sauce','Worchestire Sauce','Milk','Any Mustard','Mustard','Soy Sauce','Black Pepper','Black Peppercorn','Cardamom','Cinnamon','Cloves','Aniseed','Fennel Seeds','Fish Sauce','Chilli','Grated Cheese','Pasta','Baking Powder','Cacao','Canned Chickpeas','Salt','Frozen Corn','Frozen Green Beans','Frozen Peas','Peanut Butter','Sesame Oil','Sesame Seeds','Sriracha','Siracha','Egg Noodles','Anchovies','Bay Leaves','Bay Leaf','Canned Tomatoes','Passata','Tomato Passata','Chicken Stock','Beef Stock','Vegetable Stock','Fish Stock','Cumin','Kunserva','Polenta','Red Wine','Eggs','Tahini','Mayonnaise','Ketchup','BBQ Sauce','Paprika Sweet','Paprika Smokey','Cous Cous','Canned Butter Beans','Canned Kidney Beans','Canned Tuna','Curry Powder','Panko Breadcrumbs','Balsamic Vinegar','Flour','Cornflour','Greek Yogurt','Nutmeg','Coconut Milk','Canned Coconut Milk','Dry Lentils','Turmeric','Garam Masala','Green Pesto','Red Pesto','Water','Rice Wine Vinegar','Baking Soda']);
 const FRESH=['fresh','lemon','lime','tomato','parsley','coriander','basil','mint','ginger','spring onion','cucumber','lettuce','carrot','celery','leek','potato','courgette','aubergine','broccoli','cauliflower','kale','spinach','mushroom','pepper','apple','bread','butter','cream','fish','chicken','beef','lamb','pork','sausage','salmon','white fish','mince','chorizo','pancetta','gammon','bacon','rotisserie','ricotta','feta','cheddar','parmesan','kefalyori','provolone','hard cheese','dumplings','frozen pepper','frozen spinach','frozen mushroom'];
 
@@ -421,7 +454,7 @@ let recipes=[], plan=[], shoppingChecked={}, activeModalId=null, recipeFilter=nu
 function loadData(){
   try{
     const r=localStorage.getItem(SK_R);
-    if(r){ recipes=JSON.parse(r); recipes.forEach(r=>{if(!r.cookDates)r.cookDates=[];}); }
+    if(r){ recipes=JSON.parse(r); recipes.forEach(r=>{if(!r.cookDates)r.cookDates=[];if(!r.pairsWith)r.pairsWith='';}); }
     else{ recipes=DR.map((x,i)=>({...x,id:i+1,cookDates:[]})); saveR(); }
   }catch(e){ recipes=DR.map((x,i)=>({...x,id:i+1,cookDates:[]})); }
   try{ plan=JSON.parse(localStorage.getItem(SK_P)||'[]'); }catch(e){ plan=[]; }
@@ -464,7 +497,7 @@ function clearRecipeFilter(){
   renderRecipes();
 }
 
-function tc(t){ const m={'Dinner':'dinner','Pasta':'pasta','Dessert':'dessert','Lunch':'lunch','Breakfast':'breakfast'}; return m[t.trim()]||''; }
+function tc(t){ const m={'Dinner':'dinner','Pasta':'pasta','Dessert':'dessert','Lunch':'lunch','Breakfast':'breakfast','Side':'side'}; return m[t.trim()]||''; }
 
 function renderRecipes(){
   let f;
@@ -537,7 +570,7 @@ function adjustCook(id, delta){
 }
 
 function renderCategories(){
-  const cats=['Dinner','Pasta','Dessert','Lunch','Breakfast'];
+  const cats=['Dinner','Pasta','Dessert','Lunch','Breakfast','Side'];
   const c=document.getElementById('cat-grid');
   c.innerHTML=cats.map(cat=>{
     const count=recipes.filter(r=>r.tags.split(',').map(t=>t.trim()).includes(cat)).length;
@@ -592,6 +625,7 @@ function switchToEdit(){
   document.getElementById('edit-ingredients').value=r.ingredients;
   document.getElementById('edit-link').value=r.link||'';
   document.getElementById('edit-notes').value=r.notes||'';
+  document.getElementById('edit-pairswith').value=r.pairsWith||'';
   const cur=r.tags.split(',').map(t=>t.trim());
   document.querySelectorAll('#edit-cat-picker .cat-pill').forEach(p=>p.classList.toggle('selected',cur.includes(p.dataset.cat)));
   document.getElementById('modal-view').style.display='none';
@@ -607,7 +641,7 @@ function saveEdit(){
   if(!name||!ingredients){showToast('Name and ingredients required');return;}
   const cats=[...document.querySelectorAll('#edit-cat-picker .cat-pill.selected')].map(p=>p.dataset.cat);
   r.name=name; r.tags=cats.length?cats.join(', '):'Dinner';
-  r.ingredients=ingredients; r.link=document.getElementById('edit-link').value.trim(); r.notes=document.getElementById('edit-notes').value.trim();
+  r.ingredients=ingredients; r.link=document.getElementById('edit-link').value.trim(); r.notes=document.getElementById('edit-notes').value.trim(); r.pairsWith=document.getElementById('edit-pairswith').value.trim();
   saveR(); renderAll(); openModal(activeModalId); showToast('Recipe updated!');
 }
 
@@ -632,32 +666,81 @@ function addRecipe(){
   const ingredients=document.getElementById('new-ingredients').value.trim();
   if(!name||!ingredients){showToast('Name and ingredients are required');return;}
   const cats=[...document.querySelectorAll('#new-cat-picker .cat-pill.selected')].map(p=>p.dataset.cat);
-  recipes.push({id:Date.now(),name,tags:cats.length?cats.join(', '):'Dinner',ingredients,notes:document.getElementById('new-notes').value.trim(),link:document.getElementById('new-link').value.trim(),cookDates:[]});
+  recipes.push({id:Date.now(),name,tags:cats.length?cats.join(', '):'Dinner',ingredients,notes:document.getElementById('new-notes').value.trim(),link:document.getElementById('new-link').value.trim(),pairsWith:document.getElementById('new-pairswith').value.trim(),cookDates:[]});
   saveR(); clearForm(); renderAll(); showToast('Recipe saved!'); showView('recipes');
 }
 
 function clearForm(){
-  ['new-name','new-ingredients','new-notes','new-link'].forEach(id=>document.getElementById(id).value='');
+  ['new-name','new-ingredients','new-notes','new-link','new-pairswith'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('#new-cat-picker .cat-pill').forEach(p=>p.classList.remove('selected'));
 }
 
+function isSide(r){ return r.tags.split(',').map(t=>t.trim()).includes('Side'); }
+
 function generatePlan(){
   const isDessert=r=>r.tags.split(',').map(t=>t.trim()).includes('Dessert');
-  const dinners=recipes.filter(r=>!isDessert(r));
+  const dinners=recipes.filter(r=>!isDessert(r)&&!isSide(r));
   const desserts=recipes.filter(r=>isDessert(r));
-  if(dinners.length<14){showToast('Need at least 14 non-dessert recipes');return;}
+  if(dinners.length<14){showToast('Need at least 14 non-dessert, non-side recipes');return;}
   const sd=[...dinners].sort(()=>Math.random()-0.5);
   const sx=[...desserts].sort(()=>Math.random()-0.5);
   const sl=[...LUNCH_ROTATIONS].sort(()=>Math.random()-0.5);
   plan=[];
   for(let w=1;w<=2;w++){
     const off=(w-1)*7;
-    DAYS.forEach((day,i)=>plan.push({type:'dinner',week:w,day,recipeId:sd[off+i].id,recipeName:sd[off+i].name}));
+    DAYS.forEach((day,i)=>plan.push({type:'dinner',week:w,day,recipeId:sd[off+i].id,recipeName:sd[off+i].name,sideId:null,sideName:null}));
     plan.push({type:'lunch',week:w,day:'',recipeId:null,recipeName:sl[(w-1)%sl.length]});
     const dx=sx[(w-1)%(sx.length||1)];
     plan.push({type:'dessert',week:w,day:'',recipeId:dx?dx.id:null,recipeName:dx?dx.name:'No desserts added yet'});
   }
   saveP(); renderPlan(); showToast('Fortnight generated!');
+
+  // Check for side suggestions
+  const suggestions = [];
+  const sides = recipes.filter(isSide);
+  plan.filter(p=>p.type==='dinner').forEach(p=>{
+    sides.forEach(side=>{
+      if(!side.pairsWith) return;
+      const pairs = side.pairsWith.split(',').map(s=>s.trim().toLowerCase());
+      if(pairs.includes(p.recipeName.toLowerCase())){
+        suggestions.push({ dinnerPlanIdx: plan.indexOf(p), dinnerName: p.recipeName, sideId: side.id, sideName: side.name, week: p.week, day: p.day });
+      }
+    });
+  });
+  if(suggestions.length) showSidesModal(suggestions);
+}
+
+let pendingSuggestions = [];
+
+function showSidesModal(suggestions){
+  pendingSuggestions = suggestions;
+  document.getElementById('sides-suggestions').innerHTML = suggestions.map((s,i)=>`
+    <div class="side-suggestion">
+      <label>
+        <input type="checkbox" id="side-check-${i}" checked />
+        <div class="side-suggestion-text">
+          <div class="side-dinner">Week ${s.week} · ${s.day}</div>
+          <div class="side-name">${s.dinnerName} <span style="color:var(--text-faint)">→</span> ${s.sideName}</div>
+        </div>
+      </label>
+    </div>`).join('');
+  document.getElementById('sides-modal').classList.add('open');
+}
+
+function closeSidesModal(){ document.getElementById('sides-modal').classList.remove('open'); pendingSuggestions=[]; }
+function handleSidesModalClick(e){ if(e.target===document.getElementById('sides-modal')) closeSidesModal(); }
+
+function addSelectedSides(){
+  pendingSuggestions.forEach((s,i)=>{
+    const cb=document.getElementById('side-check-'+i);
+    if(cb&&cb.checked){ plan[s.dinnerPlanIdx].sideId=s.sideId; plan[s.dinnerPlanIdx].sideName=s.sideName; }
+  });
+  saveP(); renderPlan(); closeSidesModal(); showToast('Sides added to plan!');
+}
+
+function addAllSides(){
+  pendingSuggestions.forEach(s=>{ plan[s.dinnerPlanIdx].sideId=s.sideId; plan[s.dinnerPlanIdx].sideName=s.sideName; });
+  saveP(); renderPlan(); closeSidesModal(); showToast('All sides added!');
 }
 
 function clearPlan(){ plan=[]; saveP(); renderPlan(); showToast('Plan cleared'); }
@@ -672,7 +755,7 @@ function renderPlan(){
     const dessert=plan.map((p,i)=>({...p,i})).find(p=>p.week===w&&p.type==='dessert');
     return `
       <div class="plan-section-label">Week ${w} — Dinners</div>
-      <div class="plan-grid">${dinners.map(p=>`<div class="plan-card"><button class="plan-remove" onclick="removePlanItem(${p.i})">&#215;</button><div class="plan-day">${p.day}</div><div class="plan-recipe">${p.recipeName}</div></div>`).join('')}</div>
+      <div class="plan-grid">${dinners.map(p=>`<div class="plan-card"><button class="plan-remove" onclick="removePlanItem(${p.i})">&#215;</button><div class="plan-day">${p.day}</div><div class="plan-recipe">${p.recipeName}</div>${p.sideName?`<div class="plan-side-note">+ ${p.sideName}</div>`:''}</div>`).join('')}</div>
       <div class="plan-extras-row">
         <div class="plan-extra-card plan-extra-lunch">${lunch?`<button class="plan-remove" onclick="removePlanItem(${lunch.i})">&#215;</button>`:''}<div class="plan-extra-label">&#127828; Lunch rotation</div><div class="plan-recipe">${lunch?lunch.recipeName:'—'}</div></div>
         <div class="plan-extra-card plan-extra-dessert">${dessert?`<button class="plan-remove" onclick="removePlanItem(${dessert.i})">&#215;</button>`:''}<div class="plan-extra-label">&#127874; Dessert of the week</div><div class="plan-recipe">${dessert?dessert.recipeName:'—'}</div></div>
@@ -691,6 +774,7 @@ function renderShopping(){
   plan.filter(p=>p.type==='dinner'||p.type==='dessert').forEach(p=>{
     const r=recipes.find(x=>x.id===p.recipeId); if(!r) return;
     r.ingredients.split(',').forEach(ing=>{ const cl=ing.trim(); if(!allIng.has(cl)) allIng.set(cl,[]); allIng.get(cl).push(r.name); });
+    if(p.sideId){ const sr=recipes.find(x=>x.id===p.sideId); if(sr) sr.ingredients.split(',').forEach(ing=>{ const cl=ing.trim(); if(!allIng.has(cl)) allIng.set(cl,[]); allIng.get(cl).push(sr.name); }); }
   });
   const toBuy=[],stapleCheck=[];
   allIng.forEach((_,ing)=>{ if(STAPLES.has(ing)) stapleCheck.push(ing); else toBuy.push(ing); });
@@ -717,6 +801,7 @@ function exportPDF(){
   plan.filter(p=>p.type==='dinner'||p.type==='dessert').forEach(p=>{
     const r=recipes.find(x=>x.id===p.recipeId); if(!r) return;
     r.ingredients.split(',').forEach(ing=>{ const cl=ing.trim(); if(!allIng.has(cl)) allIng.set(cl,[]); allIng.get(cl).push(r.name); });
+    if(p.sideId){ const sr=recipes.find(x=>x.id===p.sideId); if(sr) sr.ingredients.split(',').forEach(ing=>{ const cl=ing.trim(); if(!allIng.has(cl)) allIng.set(cl,[]); allIng.get(cl).push(sr.name); }); }
   });
   const toBuy=[],stapleCheck=[];
   allIng.forEach((_,ing)=>{ if(STAPLES.has(ing)) stapleCheck.push(ing); else toBuy.push(ing); });
@@ -731,7 +816,7 @@ function exportPDF(){
     return `
       <div>
         <div class="pdf-week-title">Week ${w}</div>
-        ${dinners.map(p=>`<div class="pdf-day-row"><span class="pdf-day">${p.day.slice(0,3)}</span><span class="pdf-meal">${p.recipeName}</span></div>`).join('')}
+        ${dinners.map(p=>`<div class="pdf-day-row"><span class="pdf-day">${p.day.slice(0,3)}</span><span class="pdf-meal">${p.recipeName}${p.sideName?` <span style="color:#a09d96;font-size:10px;">+ ${p.sideName}</span>`:''}</span></div>`).join('')}
         <div class="pdf-extras">
           <div class="pdf-extra pdf-extra-lunch"><div class="pdf-extra-label">&#127828; Lunch</div><div class="pdf-extra-name">${lunch?lunch.recipeName:'—'}</div></div>
           <div class="pdf-extra pdf-extra-dessert"><div class="pdf-extra-label">&#127874; Dessert</div><div class="pdf-extra-name">${dessert?dessert.recipeName:'—'}</div></div>
