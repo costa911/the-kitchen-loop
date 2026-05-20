@@ -1,0 +1,52 @@
+THE KITCHEN LOOP — DEVELOPMENT ROADMAP
+=======================================
+https://costa911.github.io/the-kitchen-loop/
+
+
+PHASE 1 — STATIC APP ✅ COMPLETE
+----------------------------------
+- Single index.html, vanilla HTML/CSS/JS
+- Data stored in browser localStorage
+- Hosted on GitHub Pages
+- Features: recipe library, cook logging, fortnightly planner, shopping list, PDF export, sides pairing
+
+
+PHASE 2 — GITHUB API + CLOUDFLARE WORKER 🔜 NEXT
+--------------------------------------------------
+- Data moves from localStorage to data.json in GitHub repo
+- Cloudflare Worker acts as secure middleman for API writes
+- PIN system (4-digit household code) separates family data
+- Cross-device sync — any browser, any device
+- Fortnightly plan history stored and viewable in app
+- Stack learned: REST APIs, GitHub API, Cloudflare Workers, serverless, authentication basics
+
+
+PHASE 3 — SELF-HOSTED LINUX SERVER ⏳ FUTURE
+----------------------------------------------
+- Old laptop running Antix Linux as a home server
+- Node.js backend replaces Cloudflare Worker
+- SQLite database replaces data.json
+- Cloudflare Tunnel for public access (no router config needed)
+- Proper user accounts with email/password replacing PIN system
+- Household model — family members share one account
+- Automated weekly database backups
+- Only required port open, all others locked down
+- Stack learned: Linux admin, Node.js, SQLite, networking, security, encryption, backups
+- One line change in index.html to point from Phase 2 to Phase 3 API
+
+
+TRANSITION NOTES
+----------------
+- Frontend (index.html) stays the same throughout all phases
+- Phase 1 → Phase 2: swap localStorage for GitHub API calls
+- Phase 2 → Phase 3: swap Cloudflare Worker URL for home server URL
+- Each phase stays live until next phase is fully tested
+- Phase 2 is decommissioned when Phase 3 goes live
+
+
+FULL STACK COVERAGE BY END OF PHASE 3
+--------------------------------------
+Frontend    HTML, CSS, JavaScript, UI/UX
+API         REST, GitHub API, Cloudflare Workers
+Backend     Node.js, SQLite, authentication, encryption
+DevOps      Git, GitHub Pages, Linux, deployment, security
