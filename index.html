@@ -393,7 +393,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const SK_R='rc_recipes_v5', SK_P='rc_plan_v5', SK_S='rc_shop_v5';
+const API='https://kitchen-loop-api.costa911.workers.dev', PIN='1234';
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const LUNCH_ROTATIONS=['Sweetcorn & Tuna Dip — crackers','Egg & Sardines Dip — crackers','Tomato Paste & Cucumbers — crackers','Ham & Cheese — bread or crackers','Bean Salad with lettuce','Leftovers from dinner'];
 const CAT_ICONS={'Dinner':'🍽️','Pasta':'🍝','Dessert':'🍰','Lunch':'🥗','Breakfast':'🍳','Side':'🥗'};
@@ -450,20 +450,35 @@ const DR=[
 ];
 
 let recipes=[], plan=[], shoppingChecked={}, activeModalId=null, recipeFilter=null;
+let _saveTimer=null;
 
-function loadData(){
+async function loadData(){
   try{
-    const r=localStorage.getItem(SK_R);
-    if(r){ recipes=JSON.parse(r); recipes.forEach(r=>{if(!r.cookDates)r.cookDates=[];if(!r.pairsWith)r.pairsWith='';}); }
-    else{ recipes=DR.map((x,i)=>({...x,id:i+1,cookDates:[]})); saveR(); }
-  }catch(e){ recipes=DR.map((x,i)=>({...x,id:i+1,cookDates:[]})); }
-  try{ plan=JSON.parse(localStorage.getItem(SK_P)||'[]'); }catch(e){ plan=[]; }
-  try{ shoppingChecked=JSON.parse(localStorage.getItem(SK_S)||'{}'); }catch(e){ shoppingChecked={}; }
+    const res=await fetch(`${API}/data`);
+    if(!res.ok) throw new Error(res.status);
+    const d=await res.json();
+    recipes=d.recipes||[];
+    recipes.forEach(r=>{if(!r.cookDates)r.cookDates=[];if(!r.pairsWith)r.pairsWith='';});
+    plan=d.plan||[];
+    shoppingChecked=d.shoppingChecked||{};
+  }catch(e){
+    recipes=DR.map((x,i)=>({...x,id:i+1,cookDates:[],pairsWith:''}));
+    plan=[]; shoppingChecked={};
+    showToast('Offline — showing default recipes');
+  }
   renderAll();
 }
-function saveR(){ localStorage.setItem(SK_R,JSON.stringify(recipes)); }
-function saveP(){ localStorage.setItem(SK_P,JSON.stringify(plan)); }
-function saveS(){ localStorage.setItem(SK_S,JSON.stringify(shoppingChecked)); }
+function saveData(){
+  clearTimeout(_saveTimer);
+  _saveTimer=setTimeout(async()=>{
+    try{
+      await fetch(`${API}/data`,{method:'PUT',headers:{'Content-Type':'application/json','X-PIN':PIN},body:JSON.stringify({recipes,plan,shoppingChecked})});
+    }catch(e){ showToast('Save failed — check connection'); }
+  },500);
+}
+function saveR(){ saveData(); }
+function saveP(){ saveData(); }
+function saveS(){ saveData(); }
 function renderAll(){ renderStats(); renderRecipes(); renderCookLog(); renderCategories(); renderPlan(); renderShopping(); }
 
 function renderStats(){
