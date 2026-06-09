@@ -334,7 +334,16 @@
       <div class="tags" id="mv-tags"></div>
       <div class="cook-banner">
         <span class="cook-banner-text" id="mv-cook-count">Never cooked</span>
-        <button class="btn btn-cook" onclick="logCook()">&#10003; Cooked it!</button>
+        <button class="btn btn-cook" id="btn-cooked-it" onclick="logCook()">&#10003; Cooked it!</button>
+        <div id="cook-confirm-prompt" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:13px;font-weight:500;color:var(--accent-text)">Cook this today?</span>
+          <button class="btn btn-cook" onclick="confirmCookToday()">Yes</button>
+          <button class="btn btn-secondary" onclick="showCookDatePicker()">Pick a date</button>
+        </div>
+        <div id="cook-date-picker-wrap" style="display:none;align-items:center;gap:8px;flex-wrap:wrap;">
+          <input type="date" id="cook-date-input" style="font-size:13px;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-family:inherit;background:var(--surface);">
+          <button class="btn btn-cook" onclick="confirmCookDate()">Confirm</button>
+        </div>
       </div>
       <div class="modal-sec-label">Ingredients</div>
       <p class="modal-ingredients" id="mv-ingredients"></p>
@@ -619,6 +628,9 @@ function openModal(id){
   if(r.notes){document.getElementById('mv-notes').textContent=r.notes;nw.style.display='block';}else{nw.style.display='none';}
   const lnk=document.getElementById('mv-link');
   if(r.link){lnk.href=r.link;lnk.style.display='inline-flex';}else{lnk.style.display='none';}
+  document.getElementById('btn-cooked-it').style.display='';
+  document.getElementById('cook-confirm-prompt').style.display='none';
+  document.getElementById('cook-date-picker-wrap').style.display='none';
   document.getElementById('modal-view').style.display='block';
   document.getElementById('modal-edit').style.display='none';
   document.getElementById('recipe-modal').classList.add('open');
@@ -628,8 +640,31 @@ function closeModal(){ document.getElementById('recipe-modal').classList.remove(
 function handleModalClick(e){ if(e.target===document.getElementById('recipe-modal')) closeModal(); }
 
 function logCook(){
+  document.getElementById('btn-cooked-it').style.display='none';
+  document.getElementById('cook-confirm-prompt').style.display='flex';
+}
+
+function confirmCookToday(){
+  doLogCook(new Date().toISOString());
+}
+
+function showCookDatePicker(){
+  const today=new Date().toISOString().split('T')[0];
+  const inp=document.getElementById('cook-date-input');
+  inp.value=today; inp.max=today;
+  document.getElementById('cook-confirm-prompt').style.display='none';
+  document.getElementById('cook-date-picker-wrap').style.display='flex';
+}
+
+function confirmCookDate(){
+  const val=document.getElementById('cook-date-input').value; if(!val) return;
+  const [y,m,d]=val.split('-').map(Number);
+  doLogCook(new Date(y,m-1,d).toISOString());
+}
+
+function doLogCook(dateISO){
   const r=recipes.find(x=>x.id===activeModalId); if(!r) return;
-  r.cookDates.push(new Date().toISOString());
+  r.cookDates.push(dateISO);
   saveR(); openModal(activeModalId); renderStats(); renderRecipes(); renderCookLog();
   showToast(`Logged! ${r.name} cooked ${r.cookDates.length}\xd7`);
 }
