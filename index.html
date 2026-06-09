@@ -128,6 +128,29 @@
     .plan-extra-dessert { background: #fdf0fb; border: 1px solid #e8c0e0; }
     .plan-extra-label { font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
 
+    /* Plan tabs */
+    .plan-tabs { display: flex; gap: 4px; margin-bottom: 1.25rem; }
+    .plan-tab { padding: 6px 14px; border-radius: 20px; border: none; background: transparent; color: var(--text-muted); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+    .plan-tab:hover { background: var(--bg); color: var(--text); }
+    .plan-tab.active { background: var(--text); color: var(--surface); }
+    .plan-tick { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--border); background: var(--surface); color: var(--text-faint); cursor: pointer; font-size: 11px; line-height: 1; transition: all 0.15s; margin-top: 6px; flex-shrink: 0; font-family: 'DM Sans', sans-serif; padding: 0; }
+    .plan-tick:hover { border-color: var(--accent); color: var(--accent-text); background: var(--accent-light); }
+    .plan-tick.ticked { background: var(--accent-light); border-color: var(--accent); color: var(--accent-text); cursor: default; }
+    .plan-card.plan-cooked { background: #f0faf2; border-color: #c8e6c9; }
+    .plan-card.plan-cooked .plan-recipe { text-decoration: line-through; opacity: 0.6; }
+    .plan-extra-card.plan-cooked .plan-recipe { text-decoration: line-through; opacity: 0.6; }
+    .plan-cooked-date { font-size: 10px; color: var(--accent-text); margin-top: 2px; }
+    .plan-history-entry { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 10px; box-shadow: var(--shadow); overflow: hidden; }
+    .plan-history-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; user-select: none; transition: background 0.15s; gap: 12px; }
+    .plan-history-header:hover { background: var(--bg); }
+    .plan-history-label { font-size: 14px; font-weight: 600; flex: 1; }
+    .plan-history-meta { font-size: 12px; color: var(--text-muted); }
+    .plan-history-toggle { font-size: 11px; color: var(--text-faint); }
+    .plan-history-body { padding: 0 16px 16px; border-top: 1px solid var(--border); }
+    .plan-history-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 8px 10px; }
+    .plan-history-card.plan-cooked { background: var(--accent-light); border-color: #c8e6c9; }
+    .plan-history-card.plan-cooked .plan-recipe { text-decoration: line-through; opacity: 0.6; }
+
     /* Shopping */
     .shopping-section { margin-bottom: 2rem; }
     .shopping-section h3 { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
@@ -306,12 +329,22 @@
   <!-- PLAN -->
   <div id="view-plan" class="view">
     <div class="page-header"><div class="page-header-text"><h1>Fortnightly Plan</h1><p>7 dinners per week, plus 1 lunch rotation and 1 dessert</p></div></div>
-    <div class="plan-actions">
-      <button class="btn btn-primary" onclick="generatePlan()">&#10024; Auto-generate</button>
-      <button class="btn btn-secondary" onclick="savePlanAndShop()">&#8594; Build shopping list</button>
-      <button class="btn btn-danger" onclick="clearPlan()">Clear plan</button>
+    <div class="plan-tabs">
+      <button id="plan-tab-active" class="plan-tab active" onclick="switchPlanTab('active')">Active</button>
+      <button id="plan-tab-history" class="plan-tab" onclick="switchPlanTab('history')">History</button>
     </div>
-    <div id="plan-container"></div>
+    <div id="plan-active-content">
+      <div class="plan-actions">
+        <button class="btn btn-primary" onclick="generatePlan()">&#10024; Auto-generate</button>
+        <button class="btn btn-secondary" onclick="savePlanAndShop()">&#8594; Build shopping list</button>
+        <button class="btn btn-secondary" onclick="archivePlan()">&#128230; Archive plan</button>
+        <button class="btn btn-danger" onclick="clearPlan()">Clear plan</button>
+      </div>
+      <div id="plan-container"></div>
+    </div>
+    <div id="plan-history-content" style="display:none">
+      <div id="plan-history-container"></div>
+    </div>
   </div>
 
   <!-- SHOPPING -->
@@ -458,7 +491,7 @@ const DR=[
   {name:'Broccoli & Feta Pie',tags:'Dinner',ingredients:'Broccoli, Feta, Eggs, Kefalyori, Milk, Greek Yogurt, Olive Oil, Flour',notes:'',link:'https://www.instagram.com/reel/DRr5fa3jERQ/'},
 ];
 
-let recipes=[], plan=[], shoppingChecked={}, activeModalId=null, recipeFilter=null;
+let recipes=[], plan=[], planHistory=[], shoppingChecked={}, activeModalId=null, recipeFilter=null, planTickIdx=null;
 let _saveTimer=null;
 
 async function loadData(){
@@ -469,6 +502,8 @@ async function loadData(){
     recipes=d.recipes||[];
     recipes.forEach(r=>{if(!r.cookDates)r.cookDates=[];if(!r.pairsWith)r.pairsWith='';});
     plan=d.plan||[];
+    plan.forEach(p=>{if(p.cooked===undefined)p.cooked=false;if(p.cookedDate===undefined)p.cookedDate=null;});
+    planHistory=d.planHistory||[];
     shoppingChecked=d.shoppingChecked||{};
   }catch(e){
     recipes=DR.map((x,i)=>({...x,id:i+1,cookDates:[],pairsWith:''}));
@@ -481,14 +516,14 @@ function saveData(){
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(async()=>{
     try{
-      await fetch(`${API}/data`,{method:'PUT',headers:{'Content-Type':'application/json','X-PIN':PIN},body:JSON.stringify({recipes,plan,shoppingChecked})});
+      await fetch(`${API}/data`,{method:'PUT',headers:{'Content-Type':'application/json','X-PIN':PIN},body:JSON.stringify({recipes,plan,planHistory,shoppingChecked})});
     }catch(e){ showToast('Save failed — check connection'); }
   },500);
 }
 function saveR(){ saveData(); }
 function saveP(){ saveData(); }
 function saveS(){ saveData(); }
-function renderAll(){ renderStats(); renderRecipes(); renderCookLog(); renderCategories(); renderPlan(); renderShopping(); }
+function renderAll(){ renderStats(); renderRecipes(); renderCookLog(); renderCategories(); renderPlan(); renderPlanHistory(); renderShopping(); }
 
 function renderStats(){
   const neverCooked=recipes.filter(r=>r.cookDates.length===0).length;
@@ -665,7 +700,17 @@ function confirmCookDate(){
 function doLogCook(dateISO){
   const r=recipes.find(x=>x.id===activeModalId); if(!r) return;
   r.cookDates.push(dateISO);
-  saveR(); openModal(activeModalId); renderStats(); renderRecipes(); renderCookLog();
+  const fromPlan=planTickIdx!==null;
+  if(fromPlan){
+    plan[planTickIdx].cooked=true;
+    plan[planTickIdx].cookedDate=dateISO;
+    planTickIdx=null;
+    saveData();
+    closeModal();
+    renderStats(); renderRecipes(); renderCookLog(); renderPlan();
+  } else {
+    saveR(); openModal(activeModalId); renderStats(); renderRecipes(); renderCookLog();
+  }
   showToast(`Logged! ${r.name} cooked ${r.cookDates.length}\xd7`);
 }
 
@@ -738,10 +783,10 @@ function generatePlan(){
   plan=[];
   for(let w=1;w<=2;w++){
     const off=(w-1)*7;
-    DAYS.forEach((day,i)=>plan.push({type:'dinner',week:w,day,recipeId:sd[off+i].id,recipeName:sd[off+i].name,sideId:null,sideName:null}));
-    plan.push({type:'lunch',week:w,day:'',recipeId:null,recipeName:sl[(w-1)%sl.length]});
+    DAYS.forEach((day,i)=>plan.push({type:'dinner',week:w,day,recipeId:sd[off+i].id,recipeName:sd[off+i].name,sideId:null,sideName:null,cooked:false,cookedDate:null}));
+    plan.push({type:'lunch',week:w,day:'',recipeId:null,recipeName:sl[(w-1)%sl.length],cooked:false,cookedDate:null});
     const dx=sx[(w-1)%(sx.length||1)];
-    plan.push({type:'dessert',week:w,day:'',recipeId:dx?dx.id:null,recipeName:dx?dx.name:'No desserts added yet'});
+    plan.push({type:'dessert',week:w,day:'',recipeId:dx?dx.id:null,recipeName:dx?dx.name:'No desserts added yet',cooked:false,cookedDate:null});
   }
   saveP(); renderPlan(); showToast('Fortnight generated!');
 
@@ -796,19 +841,119 @@ function addAllSides(){
 function clearPlan(){ plan=[]; saveP(); renderPlan(); showToast('Plan cleared'); }
 function removePlanItem(i){ plan.splice(i,1); saveP(); renderPlan(); }
 
+function switchPlanTab(tab){
+  document.getElementById('plan-tab-active').classList.toggle('active',tab==='active');
+  document.getElementById('plan-tab-history').classList.toggle('active',tab==='history');
+  document.getElementById('plan-active-content').style.display=tab==='active'?'':'none';
+  document.getElementById('plan-history-content').style.display=tab==='history'?'':'none';
+}
+
+function tickPlanMeal(idx){
+  const item=plan[idx]; if(!item||item.cooked) return;
+  if(item.recipeId){
+    planTickIdx=idx;
+    openModal(item.recipeId);
+    logCook();
+  } else {
+    item.cooked=true; item.cookedDate=new Date().toISOString();
+    saveData(); renderPlan(); showToast('Marked as cooked!');
+  }
+}
+
+function archivePlan(){
+  if(!plan.length){showToast('No active plan to archive');return;}
+  const label=new Date().toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  planHistory.unshift({savedAt:label,entries:plan.map(p=>({...p}))});
+  plan=[];
+  saveData(); renderPlan(); renderPlanHistory();
+  switchPlanTab('history');
+  showToast('Plan archived!');
+}
+
+function renderPlanHistory(){
+  const c=document.getElementById('plan-history-container'); if(!c) return;
+  if(!planHistory.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">&#128203;</div>No archived plans yet — archive your active plan to see it here</div>';return;}
+  c.innerHTML=planHistory.map((ph,hi)=>{
+    const total=ph.entries.length;
+    const cooked=ph.entries.filter(e=>e.cooked).length;
+    return `<div class="plan-history-entry">
+      <div class="plan-history-header" onclick="toggleHistory(${hi})">
+        <span class="plan-history-label">${ph.savedAt}</span>
+        <span class="plan-history-meta">${cooked}/${total} cooked</span>
+        <span class="plan-history-toggle" id="ph-toggle-${hi}">&#9654;</span>
+      </div>
+      <div class="plan-history-body" id="ph-body-${hi}" style="display:none">
+        ${renderHistoryWeek(ph.entries,1)}${renderHistoryWeek(ph.entries,2)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderHistoryWeek(entries,w){
+  const dinners=entries.filter(p=>p.week===w&&p.type==='dinner');
+  const lunch=entries.find(p=>p.week===w&&p.type==='lunch');
+  const dessert=entries.find(p=>p.week===w&&p.type==='dessert');
+  const hCard=(p,extraClass='')=>`
+    <div class="plan-history-card${p.cooked?' plan-cooked':''}">
+      <div class="plan-day">${p.day||''}</div>
+      <div class="plan-recipe">${p.cooked?'&#10003; ':''}${p.recipeName}</div>
+      ${p.cookedDate?`<div class="plan-cooked-date">${new Date(p.cookedDate).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div>`:''}
+    </div>`;
+  return `
+    <div class="plan-section-label" style="margin-top:1rem">Week ${w} — Dinners</div>
+    <div class="plan-grid">${dinners.map(p=>hCard(p)).join('')}</div>
+    <div class="plan-extras-row" style="margin-top:10px">
+      ${lunch?`<div class="plan-extra-card plan-extra-lunch${lunch.cooked?' plan-cooked':''}"><div class="plan-extra-label">&#127828; Lunch</div><div class="plan-recipe">${lunch.cooked?'&#10003; ':''}${lunch.recipeName}</div>${lunch.cookedDate?`<div class="plan-cooked-date">${new Date(lunch.cookedDate).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div>`:''}</div>`:''}
+      ${dessert?`<div class="plan-extra-card plan-extra-dessert${dessert.cooked?' plan-cooked':''}"><div class="plan-extra-label">&#127874; Dessert</div><div class="plan-recipe">${dessert.cooked?'&#10003; ':''}${dessert.recipeName}</div>${dessert.cookedDate?`<div class="plan-cooked-date">${new Date(dessert.cookedDate).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div>`:''}</div>`:''}
+    </div>`;
+}
+
+function toggleHistory(hi){
+  const body=document.getElementById('ph-body-'+hi);
+  const toggle=document.getElementById('ph-toggle-'+hi);
+  const open=body.style.display!=='none';
+  body.style.display=open?'none':'';
+  toggle.innerHTML=open?'&#9654;':'&#9660;';
+}
+
+function planCookedDateStr(p){ return p.cookedDate?new Date(p.cookedDate).toLocaleDateString('en-GB',{day:'numeric',month:'short'}):''; }
+
 function renderPlan(){
   const c=document.getElementById('plan-container');
   if(!plan.length){c.innerHTML='<div class="empty-state" style="grid-column:unset"><div class="empty-icon">&#128197;</div>Hit "Auto-generate" to build your fortnight</div>';return;}
+  const mkTick=(idx,cooked)=>cooked
+    ?`<button class="plan-tick ticked" disabled title="Cooked">&#10003;</button>`
+    :`<button class="plan-tick" onclick="tickPlanMeal(${idx})" title="Mark as cooked">&#10003;</button>`;
   const rw=w=>{
     const dinners=plan.map((p,i)=>({...p,i})).filter(p=>p.week===w&&p.type==='dinner');
     const lunch=plan.map((p,i)=>({...p,i})).find(p=>p.week===w&&p.type==='lunch');
     const dessert=plan.map((p,i)=>({...p,i})).find(p=>p.week===w&&p.type==='dessert');
     return `
       <div class="plan-section-label">Week ${w} — Dinners</div>
-      <div class="plan-grid">${dinners.map(p=>`<div class="plan-card"><button class="plan-remove" onclick="removePlanItem(${p.i})">&#215;</button><div class="plan-day">${p.day}</div><div class="plan-recipe">${p.recipeName}</div>${p.sideName?`<div class="plan-side-note">+ ${p.sideName}</div>`:''}</div>`).join('')}</div>
+      <div class="plan-grid">${dinners.map(p=>`
+        <div class="plan-card${p.cooked?' plan-cooked':''}">
+          <button class="plan-remove" onclick="removePlanItem(${p.i})">&#215;</button>
+          <div class="plan-day">${p.day}</div>
+          <div class="plan-recipe">${p.recipeName}</div>
+          ${p.sideName?`<div class="plan-side-note">+ ${p.sideName}</div>`:''}
+          <div style="display:flex;align-items:center;gap:6px;">
+            ${mkTick(p.i,p.cooked)}
+            ${p.cookedDate?`<span class="plan-cooked-date">${planCookedDateStr(p)}</span>`:''}
+          </div>
+        </div>`).join('')}</div>
       <div class="plan-extras-row">
-        <div class="plan-extra-card plan-extra-lunch">${lunch?`<button class="plan-remove" onclick="removePlanItem(${lunch.i})">&#215;</button>`:''}<div class="plan-extra-label">&#127828; Lunch rotation</div><div class="plan-recipe">${lunch?lunch.recipeName:'—'}</div></div>
-        <div class="plan-extra-card plan-extra-dessert">${dessert?`<button class="plan-remove" onclick="removePlanItem(${dessert.i})">&#215;</button>`:''}<div class="plan-extra-label">&#127874; Dessert of the week</div><div class="plan-recipe">${dessert?dessert.recipeName:'—'}</div></div>
+        <div class="plan-extra-card plan-extra-lunch${lunch&&lunch.cooked?' plan-cooked':''}">
+          ${lunch?`<button class="plan-remove" onclick="removePlanItem(${lunch.i})">&#215;</button>`:''}
+          <div class="plan-extra-label">&#127828; Lunch rotation</div>
+          <div class="plan-recipe">${lunch?lunch.recipeName:'—'}</div>
+          ${lunch?`<div style="display:flex;align-items:center;gap:6px;">${mkTick(lunch.i,lunch.cooked)}${lunch.cookedDate?`<span class="plan-cooked-date">${planCookedDateStr(lunch)}</span>`:''}</div>`:''}
+        </div>
+        <div class="plan-extra-card plan-extra-dessert${dessert&&dessert.cooked?' plan-cooked':''}">
+          ${dessert?`<button class="plan-remove" onclick="removePlanItem(${dessert.i})">&#215;</button>`:''}
+          <div class="plan-extra-label">&#127874; Dessert of the week</div>
+          <div class="plan-recipe">${dessert?dessert.recipeName:'—'}</div>
+          ${dessert?`<div style="display:flex;align-items:center;gap:6px;">${mkTick(dessert.i,dessert.cooked)}${dessert.cookedDate?`<span class="plan-cooked-date">${planCookedDateStr(dessert)}</span>`:''}</div>`:''}
+        </div>
       </div>`;
   };
   c.innerHTML=rw(1)+rw(2);
