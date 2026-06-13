@@ -599,7 +599,8 @@ function saveData(){
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(async()=>{
     try{
-      await fetch(`${API}/data`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify({recipes,plan,planHistory,shoppingChecked})});
+      const res=await fetch(`${API}/data`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify({recipes,plan,planHistory,shoppingChecked})});
+      if(!res.ok) showToast('Save failed — check connection');
     }catch(e){ showToast('Save failed — check connection'); }
   },500);
 }
@@ -1042,7 +1043,7 @@ function renderPlan(){
   c.innerHTML=rw(1)+rw(2);
 }
 
-function savePlanAndShop(){ renderShopping(); showView('shopping'); }
+function savePlanAndShop(){ saveP(); renderShopping(); showView('shopping'); }
 function isFresh(i){ const l=i.toLowerCase(); return FRESH.some(k=>l.includes(k)); }
 
 function renderShopping(){
