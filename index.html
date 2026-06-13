@@ -504,7 +504,6 @@ async function submitPassphrase(){
     if(!res.ok){ document.getElementById('passphrase-error').classList.add('show'); document.getElementById('passphrase-input').select(); return; }
     _passphrase=phrase;
     localStorage.setItem('tkl_passphrase',phrase);
-    hidePassphraseModal();
     await loadData();
   }catch(e){
     document.getElementById('passphrase-error').classList.add('show');
@@ -580,7 +579,7 @@ async function loadData(){
   try{
     const res=await fetch(`${API}/data`,{headers:{'X-Passphrase':_passphrase}});
     if(res.status===401){ localStorage.removeItem('tkl_passphrase'); _passphrase=null; showPassphraseModal(); return; }
-    if(!res.ok) throw new Error(res.status);
+    if(!res.ok){ hidePassphraseModal(); showToast('Failed to load data — try refreshing'); renderAll(); return; }
     const d=await res.json();
     recipes=d.recipes||[];
     recipes.forEach(r=>{if(!r.cookDates)r.cookDates=[];if(!r.pairsWith)r.pairsWith='';});
@@ -588,7 +587,9 @@ async function loadData(){
     plan.forEach(p=>{if(p.cooked===undefined)p.cooked=false;if(p.cookedDate===undefined)p.cookedDate=null;});
     planHistory=d.planHistory||[];
     shoppingChecked=d.shoppingChecked||{};
+    hidePassphraseModal();
   }catch(e){
+    hidePassphraseModal();
     recipes=DR.map((x,i)=>({...x,id:i+1,cookDates:[],pairsWith:''}));
     plan=[]; shoppingChecked={};
     showToast('Offline — showing default recipes');
