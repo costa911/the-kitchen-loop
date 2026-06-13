@@ -195,6 +195,28 @@
 
     @media (max-width: 600px) { header { padding: 0 1rem; } .stats-row { grid-template-columns: 1fr 1fr; } .form-grid { grid-template-columns: 1fr; } main { padding: 1.25rem 1rem; } }
 
+    /* Passphrase gate */
+    .passphrase-overlay { display: none; position: fixed; inset: 0; background: var(--bg); z-index: 500; align-items: center; justify-content: center; padding: 1rem; }
+    .passphrase-overlay.open { display: flex; }
+    .passphrase-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 2rem; max-width: 360px; width: 100%; box-shadow: var(--shadow-md); text-align: center; }
+    .passphrase-logo { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 16px; font-weight: 600; margin-bottom: 2rem; }
+    .passphrase-logo-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+    .passphrase-card h2 { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+    .passphrase-card > p { font-size: 13px; color: var(--text-muted); margin-bottom: 1.5rem; }
+    .passphrase-input-wrap { position: relative; margin-bottom: 10px; }
+    .passphrase-input-wrap input { width: 100%; padding: 10px 52px 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; transition: border-color 0.15s; }
+    .passphrase-input-wrap input:focus { border-color: var(--border-mid); }
+    .passphrase-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--text-faint); font-size: 12px; font-weight: 500; font-family: 'DM Sans', sans-serif; padding: 2px 4px; }
+    .passphrase-toggle:hover { color: var(--text); }
+    .passphrase-error { font-size: 12px; color: var(--danger); background: #fff0f0; border-radius: var(--radius-sm); padding: 8px 12px; margin-bottom: 10px; display: none; }
+    .passphrase-error.show { display: block; }
+    .passphrase-btn { width: 100%; padding: 10px; border-radius: var(--radius-sm); border: none; background: var(--text); color: var(--surface); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+    .passphrase-btn:hover { opacity: 0.85; }
+    .passphrase-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .app-footer { padding: 1rem 1.5rem 1.5rem; text-align: center; }
+    .signout-btn { background: none; border: none; color: var(--text-faint); font-family: 'DM Sans', sans-serif; font-size: 12px; cursor: pointer; text-decoration: underline dotted; padding: 0; }
+    .signout-btn:hover { color: var(--text-muted); }
+
     /* PDF Print Styles */
     #pdf-page { display: none; font-family: 'DM Sans', sans-serif; color: #1a1917; }
     .pdf-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 2px solid #1a1917; }
@@ -432,10 +454,69 @@
   <div id="pdf-page"></div>
 </div>
 
+<!-- Passphrase gate -->
+<div class="passphrase-overlay" id="passphrase-overlay">
+  <div class="passphrase-card">
+    <div class="passphrase-logo"><div class="passphrase-logo-dot"></div>The Kitchen Loop</div>
+    <h2>Welcome back</h2>
+    <p>Enter your passphrase to unlock your kitchen</p>
+    <div class="passphrase-input-wrap">
+      <input type="password" id="passphrase-input" placeholder="Your passphrase…" autocomplete="current-password" />
+      <button class="passphrase-toggle" id="passphrase-toggle" onclick="togglePassphraseVisibility()" tabindex="-1">Show</button>
+    </div>
+    <div class="passphrase-error" id="passphrase-error">Incorrect passphrase — please try again</div>
+    <button class="passphrase-btn" id="passphrase-btn" onclick="submitPassphrase()">Unlock</button>
+  </div>
+</div>
+
+<footer class="app-footer">
+  <button class="signout-btn" onclick="signOut()">Sign out</button>
+</footer>
+
 <div class="toast" id="toast"></div>
 
 <script>
-const API='https://kitchen-loop-api.costa911.workers.dev', PIN='1234';
+const API='https://kitchen-loop-api.costa911.workers.dev';
+let _passphrase=localStorage.getItem('tkl_passphrase')||null;
+
+function showPassphraseModal(){
+  document.getElementById('passphrase-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('passphrase-input').focus(),50);
+}
+function hidePassphraseModal(){ document.getElementById('passphrase-overlay').classList.remove('open'); }
+
+function togglePassphraseVisibility(){
+  const inp=document.getElementById('passphrase-input');
+  const tog=document.getElementById('passphrase-toggle');
+  const isHidden=inp.type==='password';
+  inp.type=isHidden?'text':'password';
+  tog.textContent=isHidden?'Hide':'Show';
+}
+
+async function submitPassphrase(){
+  const phrase=document.getElementById('passphrase-input').value.trim();
+  if(!phrase) return;
+  const btn=document.getElementById('passphrase-btn');
+  btn.disabled=true; btn.textContent='Checking…';
+  document.getElementById('passphrase-error').classList.remove('show');
+  try{
+    const res=await fetch(`${API}/auth`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phrase})});
+    if(!res.ok){ document.getElementById('passphrase-error').classList.add('show'); document.getElementById('passphrase-input').select(); return; }
+    _passphrase=phrase;
+    localStorage.setItem('tkl_passphrase',phrase);
+    hidePassphraseModal();
+    await loadData();
+  }catch(e){
+    document.getElementById('passphrase-error').classList.add('show');
+  }finally{
+    btn.disabled=false; btn.textContent='Unlock';
+  }
+}
+
+function signOut(){
+  localStorage.removeItem('tkl_passphrase');
+  location.reload();
+}
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const LUNCH_ROTATIONS=['Sweetcorn & Tuna Dip — crackers','Egg & Sardines Dip — crackers','Tomato Paste & Cucumbers — crackers','Ham & Cheese — bread or crackers','Bean Salad with lettuce'];
 const CAT_ICONS={'Dinner':'🍽️','Pasta':'🍝','Dessert':'🍰','Lunch':'🥗','Breakfast':'🍳','Side':'🥗'};
@@ -495,8 +576,10 @@ let recipes=[], plan=[], planHistory=[], shoppingChecked={}, activeModalId=null,
 let _saveTimer=null;
 
 async function loadData(){
+  if(!_passphrase){ showPassphraseModal(); return; }
   try{
-    const res=await fetch(`${API}/data`);
+    const res=await fetch(`${API}/data`,{headers:{'X-Passphrase':_passphrase}});
+    if(res.status===401){ localStorage.removeItem('tkl_passphrase'); _passphrase=null; showPassphraseModal(); return; }
     if(!res.ok) throw new Error(res.status);
     const d=await res.json();
     recipes=d.recipes||[];
@@ -516,7 +599,7 @@ function saveData(){
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(async()=>{
     try{
-      await fetch(`${API}/data`,{method:'PUT',headers:{'Content-Type':'application/json','X-PIN':PIN},body:JSON.stringify({recipes,plan,planHistory,shoppingChecked})});
+      await fetch(`${API}/data`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify({recipes,plan,planHistory,shoppingChecked})});
     }catch(e){ showToast('Save failed — check connection'); }
   },500);
 }
@@ -1049,6 +1132,8 @@ function exportPDF(){
     document.getElementById('print-wrapper').style.display='none';
   }, 200);
 }
+
+document.getElementById('passphrase-input').addEventListener('keydown',e=>{ if(e.key==='Enter') submitPassphrase(); });
 
 loadData();
 </script>
