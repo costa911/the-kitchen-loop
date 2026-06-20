@@ -34,12 +34,24 @@
     .back-btn:hover { background: var(--bg); color: var(--text); }
 
     /* Stats */
-    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+    .stats-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 1.5rem; }
     .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; box-shadow: var(--shadow); cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s; }
     .stat-card:hover { border-color: var(--border-mid); box-shadow: var(--shadow-md); }
     .stat-card.active-stat { border-color: var(--text); }
     .stat-num { font-size: 28px; font-weight: 600; line-height: 1; margin-bottom: 4px; }
     .stat-label { font-size: 12px; color: var(--text-muted); }
+    .stat-sub { font-size: 11px; color: var(--text-faint); margin-top: 3px; }
+
+    /* Heatmap */
+    .heatmap-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow); margin-bottom: 1.5rem; }
+    .heatmap-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+    .heatmap-grid { display: grid; grid-template-rows: repeat(7, 12px); grid-auto-flow: column; gap: 3px; width: fit-content; }
+    .hm-cell { width: 12px; height: 12px; border-radius: 2px; background: var(--bg); border: 1px solid var(--border); cursor: default; position: relative; }
+    .hm-cell[data-n="1"] { background: #b7e4c7; border-color: #b7e4c7; }
+    .hm-cell[data-n="2"] { background: #52b788; border-color: #52b788; }
+    .hm-cell[data-n="3"] { background: #2d6a4f; border-color: #2d6a4f; }
+    .heatmap-legend { display: flex; align-items: center; gap: 4px; margin-top: 8px; font-size: 11px; color: var(--text-faint); }
+    .hm-legend-cell { width: 12px; height: 12px; border-radius: 2px; }
 
     /* Recipe grid */
     .toolbar { display: flex; gap: 10px; margin-bottom: 1.25rem; flex-wrap: wrap; }
@@ -635,15 +647,49 @@ function saveP(){ saveData(); }
 function saveS(){ saveData(); }
 function renderAll(){ renderStats(); renderRecipes(); renderCookLog(); renderCategories(); renderPlan(); renderPlanHistory(); renderShopping(); }
 
+function getCookDaySet(){
+  const days=new Set();
+  recipes.forEach(r=>r.cookDates.forEach(d=>days.add(d.slice(0,10))));
+  return days;
+}
+
+function calcStreaks(){
+  const days=[...getCookDaySet()].sort();
+  if(!days.length) return {current:0,best:0};
+  const toMs=s=>new Date(s).getTime();
+  const DAY=86400000;
+  let best=1,run=1,cur=0;
+  for(let i=1;i<days.length;i++){
+    if(toMs(days[i])-toMs(days[i-1])===DAY){ run++; if(run>best) best=run; }
+    else run=1;
+  }
+  const today=new Date().toISOString().slice(0,10);
+  const yesterday=new Date(Date.now()-DAY).toISOString().slice(0,10);
+  const last=days[days.length-1];
+  if(last===today||last===yesterday){
+    cur=1;
+    for(let i=days.length-2;i>=0;i--){
+      if(toMs(days[i+1])-toMs(days[i])===DAY) cur++;
+      else break;
+    }
+  }
+  return {current:cur,best:Math.max(best,cur)};
+}
+
 function renderStats(){
   const neverCooked=recipes.filter(r=>r.cookDates.length===0).length;
   const totalCooks=recipes.reduce((a,r)=>a+(r.cookDates.length),0);
   const cats=new Set(recipes.flatMap(r=>r.tags.split(',').map(t=>t.trim()))).size;
+  const {current,best}=calcStreaks();
+  const streakTop=current>0
+    ?`<div class="stat-num">&#128293; ${current}</div><div class="stat-label">Day Streak</div>`
+    :`<div class="stat-num" style="font-size:15px;font-weight:600;line-height:1.3;margin-bottom:4px;">Start cooking today!</div>`;
   document.getElementById('stats-row').innerHTML=`
     <div class="stat-card" onclick="statClick('all')" title="View all recipes"><div class="stat-num">${recipes.length}</div><div class="stat-label">Total Recipes</div></div>
     <div class="stat-card" onclick="statClick('nevercooked')" title="View uncooked recipes"><div class="stat-num">${neverCooked}</div><div class="stat-label">Never Cooked</div></div>
     <div class="stat-card" onclick="showView('cooklog')" title="View cook log"><div class="stat-num">${totalCooks}</div><div class="stat-label">Total Cook Logs</div></div>
-    <div class="stat-card" onclick="showView('categories')" title="Browse categories"><div class="stat-num">${cats}</div><div class="stat-label">Categories</div></div>`;
+    <div class="stat-card" onclick="showView('categories')" title="Browse categories"><div class="stat-num">${cats}</div><div class="stat-label">Categories</div></div>
+    <div class="stat-card" style="cursor:default;">${streakTop}<div class="stat-sub">Best: ${best} day${best!==1?'s':''}</div></div>`;
 }
 
 function statClick(type){
@@ -699,11 +745,45 @@ function renderRecipes(){
     </div>`).join('');
 }
 
+function buildHeatmap(){
+  const DAY=86400000;
+  const WEEKS=12;
+  const today=new Date(); today.setHours(0,0,0,0);
+  // anchor to nearest Sunday end so the grid aligns Mon–Sun columns
+  const dowToday=today.getDay(); // 0=Sun
+  const endDay=new Date(today.getTime()+(6-((dowToday+6)%7))*DAY); // next Sun (or today if Sun)
+  const startDay=new Date(endDay.getTime()-(WEEKS*7-1)*DAY);
+
+  // count cooks per day
+  const cooksByDay={};
+  recipes.forEach(r=>r.cookDates.forEach(d=>{
+    const key=d.slice(0,10);
+    cooksByDay[key]=(cooksByDay[key]||0)+1;
+  }));
+
+  const cells=[];
+  for(let i=0;i<WEEKS*7;i++){
+    const d=new Date(startDay.getTime()+i*DAY);
+    const key=d.toISOString().slice(0,10);
+    const n=cooksByDay[key]||0;
+    const label=d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+    const tip=n===0?`No cooks on ${label}`:`${n} cook${n>1?'s':''} on ${label}`;
+    const shade=n===0?0:n===1?1:n===2?2:3;
+    cells.push(`<div class="hm-cell" data-n="${shade}" title="${tip}"></div>`);
+  }
+
+  return `<div class="heatmap-wrap">
+    <div class="heatmap-title">Activity — last 12 weeks</div>
+    <div class="heatmap-grid">${cells.join('')}</div>
+    <div class="heatmap-legend">Less <div class="hm-legend-cell" style="background:var(--bg);border:1px solid var(--border);"></div><div class="hm-legend-cell" style="background:#b7e4c7;"></div><div class="hm-legend-cell" style="background:#52b788;"></div><div class="hm-legend-cell" style="background:#2d6a4f;"></div> More</div>
+  </div>`;
+}
+
 function renderCookLog(){
   const cooked=recipes.filter(r=>r.cookDates.length>0).sort((a,b)=>b.cookDates.length-a.cookDates.length);
   const c=document.getElementById('cooklog-container');
-  if(!cooked.length){c.innerHTML='<div class="empty-state" style="grid-column:unset"><div class="empty-icon">&#128218;</div>No cooks logged yet — tap "Cooked it!" on any recipe</div>';return;}
-  c.innerHTML=`<table class="log-table">
+  if(!cooked.length){c.innerHTML=buildHeatmap()+'<div class="empty-state" style="grid-column:unset"><div class="empty-icon">&#128218;</div>No cooks logged yet — tap "Cooked it!" on any recipe</div>';return;}
+  c.innerHTML=buildHeatmap()+`<table class="log-table">
     <thead><tr><th>Recipe</th><th>Categories</th><th>Times Cooked</th><th>Last Cooked</th><th>Adjust</th></tr></thead>
     <tbody>${cooked.map(r=>{
       const last=r.cookDates.length?new Date(r.cookDates[r.cookDates.length-1]).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'—';
