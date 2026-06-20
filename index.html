@@ -772,9 +772,13 @@ function buildHeatmap(){
     cells.push(`<div class="hm-cell" data-n="${shade}" title="${tip}"></div>`);
   }
 
+  const dayLabels=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div style="height:12px;line-height:12px;">${d}</div>`).join('');
   return `<div class="heatmap-wrap">
     <div class="heatmap-title">Activity — last 12 weeks</div>
-    <div class="heatmap-grid">${cells.join('')}</div>
+    <div style="display:flex;gap:6px;align-items:flex-start;">
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--text-faint);padding-top:1px;white-space:nowrap;">${dayLabels}</div>
+      <div class="heatmap-grid">${cells.join('')}</div>
+    </div>
     <div class="heatmap-legend">Less <div class="hm-legend-cell" style="background:var(--bg);border:1px solid var(--border);"></div><div class="hm-legend-cell" style="background:#b7e4c7;"></div><div class="hm-legend-cell" style="background:#52b788;"></div><div class="hm-legend-cell" style="background:#2d6a4f;"></div> More</div>
   </div>`;
 }
