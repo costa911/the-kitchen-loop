@@ -275,6 +275,9 @@
       </div>
     </div>
     <div class="stats-row" id="stats-row"></div>
+    <div style="margin-bottom:1.25rem;">
+      <button class="btn btn-cook" onclick="openCookTonight()" style="font-size:14px;padding:9px 20px;">&#127922; Cook Tonight</button>
+    </div>
     <div class="toolbar" id="recipes-toolbar">
       <input type="text" id="search-input" placeholder="Search by name or ingredient..." oninput="renderRecipes()" />
       <select id="cat-filter" onchange="renderRecipes()">
@@ -447,6 +450,24 @@
         <button class="btn btn-secondary" onclick="addSelectedSides()">Add selected</button>
         <button class="btn btn-primary" onclick="addAllSides()">Add all</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="cook-tonight-modal" onclick="handleCookTonightClick(event)">
+  <div class="sides-popup" style="max-width:480px;">
+    <button class="modal-close" onclick="closeCookTonightModal()">&#215;</button>
+    <h2 style="padding-right:2rem;">&#127922; Cook Tonight</h2>
+    <p id="ct-pool-info" style="font-size:12px;color:var(--text-faint);margin-bottom:1rem;"></p>
+    <div id="ct-recipe-card" style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.25rem;margin-bottom:1rem;">
+      <div class="tags" id="ct-tags" style="margin-bottom:8px;"></div>
+      <h3 id="ct-name" style="font-size:16px;font-weight:600;margin-bottom:8px;"></h3>
+      <p id="ct-ingredients" style="font-size:12px;color:var(--text-muted);line-height:1.6;margin-bottom:8px;"></p>
+      <p id="ct-cook-count" style="font-size:12px;color:var(--text-faint);"></p>
+    </div>
+    <div class="btn-row" style="justify-content:space-between;margin-top:0;">
+      <button class="btn btn-secondary" onclick="rerollCookTonight()">&#127922; Re-roll</button>
+      <button class="btn btn-cook" onclick="cookTonightGo()" style="font-weight:600;">&#10003; Let&#39;s cook this</button>
     </div>
   </div>
 </div>
@@ -915,6 +936,44 @@ function showSidesModal(suggestions){
 
 function closeSidesModal(){ document.getElementById('sides-modal').classList.remove('open'); pendingSuggestions=[]; }
 function handleSidesModalClick(e){ if(e.target===document.getElementById('sides-modal')) closeSidesModal(); }
+
+let _ctCurrentId=null;
+
+function _ctPool(){ return recipes.filter(r=>r.tags.split(',').map(t=>t.trim()).includes('Dinner')&&!isSide(r)); }
+
+function _ctShow(r){
+  _ctCurrentId=r.id;
+  document.getElementById('ct-name').textContent=r.name;
+  document.getElementById('ct-tags').innerHTML=r.tags.split(',').map(t=>`<span class="tag ${tc(t)}">${t.trim()}</span>`).join('');
+  const ingList=r.ingredients.split(',');
+  document.getElementById('ct-ingredients').textContent=ingList.slice(0,6).map(i=>i.trim()).join(', ')+(ingList.length>6?'…':'');
+  document.getElementById('ct-cook-count').textContent=r.cookDates.length>0?`Cooked ${r.cookDates.length}\xd7`:'Not cooked yet';
+}
+
+function openCookTonight(){
+  const pool=_ctPool();
+  if(!pool.length){showToast('No dinner recipes found');return;}
+  document.getElementById('ct-pool-info').textContent=`${pool.length} dinner recipe${pool.length===1?'':'s'} in the pool`;
+  const r=pool[Math.floor(Math.random()*pool.length)];
+  _ctShow(r);
+  document.getElementById('cook-tonight-modal').classList.add('open');
+}
+
+function rerollCookTonight(){
+  const pool=_ctPool();
+  if(!pool.length) return;
+  const candidates=pool.length>1?pool.filter(r=>r.id!==_ctCurrentId):pool;
+  _ctShow(candidates[Math.floor(Math.random()*candidates.length)]);
+}
+
+function closeCookTonightModal(){ document.getElementById('cook-tonight-modal').classList.remove('open'); _ctCurrentId=null; }
+function handleCookTonightClick(e){ if(e.target===document.getElementById('cook-tonight-modal')) closeCookTonightModal(); }
+
+function cookTonightGo(){
+  const id=_ctCurrentId;
+  closeCookTonightModal();
+  if(id!=null) openModal(id);
+}
 
 function addSelectedSides(){
   pendingSuggestions.forEach((s,i)=>{
