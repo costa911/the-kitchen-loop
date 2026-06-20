@@ -273,11 +273,9 @@
         <h1 id="recipes-title">My Recipes</h1>
         <p id="recipes-subtitle">Click any recipe to view, edit or log a cook</p>
       </div>
+      <button class="btn btn-cook" onclick="openCookTonight()" style="margin-left:auto;font-size:14px;padding:9px 20px;">&#127922; Cook Tonight</button>
     </div>
     <div class="stats-row" id="stats-row"></div>
-    <div style="margin-bottom:1.25rem;">
-      <button class="btn btn-cook" onclick="openCookTonight()" style="font-size:14px;padding:9px 20px;">&#127922; Cook Tonight</button>
-    </div>
     <div class="toolbar" id="recipes-toolbar">
       <input type="text" id="search-input" placeholder="Search by name or ingredient..." oninput="renderRecipes()" />
       <select id="cat-filter" onchange="renderRecipes()">
