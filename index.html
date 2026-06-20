@@ -776,7 +776,7 @@ function buildHeatmap(){
 
   const dayLabels=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div style="height:12px;line-height:12px;">${d}</div>`).join('');
   return `<div class="heatmap-wrap">
-    <div class="heatmap-title">Activity — last 12 weeks</div>
+    <div class="heatmap-title">Activity — last 12 months</div>
     <div style="display:flex;gap:6px;align-items:flex-start;">
       <div style="display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--text-faint);padding-top:1px;white-space:nowrap;">${dayLabels}</div>
       <div class="heatmap-grid">${cells.join('')}</div>
