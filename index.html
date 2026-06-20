@@ -782,13 +782,13 @@ function buildHeatmap(){
     }
   }
 
-  const monthRow=monthLabels.map(l=>`<div style="width:15px;font-size:10px;color:var(--text-faint);white-space:nowrap;overflow:visible;">${l}</div>`).join('');
+  const monthRow=monthLabels.map(l=>`<div style="font-size:10px;color:var(--text-faint);white-space:nowrap;overflow:visible;">${l}</div>`).join('');
   const dayLabels=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d=>`<div style="height:12px;line-height:12px;">${d}</div>`).join('');
   return `<div class="heatmap-wrap">
     <div class="heatmap-title">Activity — last 12 months</div>
     <div style="display:flex;gap:6px;align-items:flex-start;">
       <div style="width:28px;flex-shrink:0;"></div>
-      <div style="display:flex;gap:3px;margin-bottom:4px;">${monthRow}</div>
+      <div style="display:grid;grid-template-columns:repeat(${WEEKS},12px);gap:3px;margin-bottom:4px;">${monthRow}</div>
     </div>
     <div style="display:flex;gap:6px;align-items:flex-start;">
       <div style="display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--text-faint);padding-top:1px;white-space:nowrap;width:28px;flex-shrink:0;">${dayLabels}</div>
