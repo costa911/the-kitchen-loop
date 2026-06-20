@@ -288,6 +288,7 @@
       </div>
     </div>
     <div class="stats-row" id="stats-row"></div>
+    <div id="heatmap-container" style="overflow-x:auto;margin-bottom:1.25rem;"></div>
     <div class="toolbar" id="recipes-toolbar">
       <input type="text" id="search-input" placeholder="Search by name or ingredient..." oninput="renderRecipes()" />
       <select id="cat-filter" onchange="renderRecipes()">
@@ -690,6 +691,7 @@ function renderStats(){
     <div class="stat-card" onclick="showView('cooklog')" title="View cook log"><div class="stat-num">${totalCooks}</div><div class="stat-label">Total Cook Logs</div></div>
     <div class="stat-card" onclick="showView('categories')" title="Browse categories"><div class="stat-num">${cats}</div><div class="stat-label">Categories</div></div>
     <div class="stat-card" style="cursor:default;">${streakTop}<div class="stat-sub">Best: ${best} day${best!==1?'s':''}</div></div>`;
+  document.getElementById('heatmap-container').innerHTML=buildHeatmap();
 }
 
 function statClick(type){
@@ -747,7 +749,7 @@ function renderRecipes(){
 
 function buildHeatmap(){
   const DAY=86400000;
-  const WEEKS=12;
+  const WEEKS=53;
   const today=new Date(); today.setHours(0,0,0,0);
   // anchor to nearest Sunday end so the grid aligns Mon–Sun columns
   const dowToday=today.getDay(); // 0=Sun
@@ -786,8 +788,8 @@ function buildHeatmap(){
 function renderCookLog(){
   const cooked=recipes.filter(r=>r.cookDates.length>0).sort((a,b)=>b.cookDates.length-a.cookDates.length);
   const c=document.getElementById('cooklog-container');
-  if(!cooked.length){c.innerHTML=buildHeatmap()+'<div class="empty-state" style="grid-column:unset"><div class="empty-icon">&#128218;</div>No cooks logged yet — tap "Cooked it!" on any recipe</div>';return;}
-  c.innerHTML=buildHeatmap()+`<table class="log-table">
+  if(!cooked.length){c.innerHTML='<div class="empty-state" style="grid-column:unset"><div class="empty-icon">&#128218;</div>No cooks logged yet — tap "Cooked it!" on any recipe</div>';return;}
+  c.innerHTML=`<table class="log-table">
     <thead><tr><th>Recipe</th><th>Categories</th><th>Times Cooked</th><th>Last Cooked</th><th>Adjust</th></tr></thead>
     <tbody>${cooked.map(r=>{
       const last=r.cookDates.length?new Date(r.cookDates[r.cookDates.length-1]).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}):'—';
