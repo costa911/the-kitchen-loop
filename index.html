@@ -207,6 +207,27 @@
     .toast.show { opacity: 1; transform: translateY(0); }
     .hint { font-size: 12px; color: var(--text-muted); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; margin-top: 1rem; line-height: 1.6; }
 
+    /* Stats Dashboard */
+    .sd-section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; box-shadow: var(--shadow); margin-bottom: 1.25rem; }
+    .sd-section-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1rem; }
+    .sd-headline { font-size: 15px; line-height: 1.6; color: var(--text); }
+    .sd-two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .sd-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem; }
+    .sd-card-title { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.75rem; }
+    .sd-lb-item { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+    .sd-lb-item:last-child { border-bottom: none; padding-bottom: 0; }
+    .sd-lb-rank { font-size: 11px; font-weight: 600; color: var(--text-faint); width: 18px; flex-shrink: 0; text-align: right; }
+    .sd-lb-name { flex: 1; font-weight: 500; }
+    .sd-lb-count { font-size: 12px; color: var(--text-muted); white-space: nowrap; }
+    .sd-bar-wrap { margin-bottom: 10px; }
+    .sd-bar-wrap:last-child { margin-bottom: 0; }
+    .sd-bar-label-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+    .sd-bar-label { font-size: 12px; font-weight: 500; }
+    .sd-bar-pct { font-size: 12px; color: var(--text-muted); }
+    .sd-bar-track { background: var(--border); border-radius: 4px; height: 8px; overflow: hidden; }
+    .sd-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
+    .sd-empty { font-size: 13px; color: var(--text-muted); padding: 1rem 0; }
+
     @media (max-width: 600px) {
       header { padding: 0 1rem; }
       nav { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; justify-content: flex-start; }
@@ -216,6 +237,7 @@
       .form-grid { grid-template-columns: 1fr; }
       main { padding: 1.25rem 1rem; }
       .heatmap-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .sd-two-col { grid-template-columns: 1fr; }
     }
 
     /* Passphrase gate */
@@ -282,6 +304,7 @@
     <button onclick="showView('add')">&#43; Add</button>
     <button onclick="showView('plan')">&#128197; Plan</button>
     <button onclick="showView('shopping')">&#128722; Shopping</button>
+    <button onclick="showView('stats')">&#128200; Stats</button>
     <button onclick="openCookTonight()">&#127922; Cook Tonight</button>
   </nav>
 </header>
@@ -401,6 +424,15 @@
       <button class="btn btn-primary" onclick="exportPDF()" style="margin-left:auto;">&#128196; Export PDF</button>
     </div>
     <div id="shopping-container"></div>
+  </div>
+
+  <!-- STATS DASHBOARD -->
+  <div id="view-stats" class="view">
+    <div class="page-header"><div class="page-header-text"><h1>Stats</h1><p>Your cooking habits at a glance</p></div></div>
+    <div id="sd-headline-wrap"></div>
+    <div id="sd-trend-wrap"></div>
+    <div id="sd-leaderboards-wrap"></div>
+    <div id="sd-profile-wrap"></div>
   </div>
 
 </main>
@@ -656,7 +688,7 @@ function saveData(){
 function saveR(){ saveData(); }
 function saveP(){ saveData(); }
 function saveS(){ saveData(); }
-function renderAll(){ renderStats(); renderRecipes(); renderCookLog(); renderCategories(); renderPlan(); renderPlanHistory(); renderShopping(); }
+function renderAll(){ renderStats(); renderRecipes(); renderCookLog(); renderCategories(); renderPlan(); renderPlanHistory(); renderShopping(); renderStatsDashboard(); }
 
 function getCookDaySet(){
   const days=new Set();
@@ -974,7 +1006,7 @@ function showView(v){
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
-  const idx=['recipes','add','plan','shopping'].indexOf(v);
+  const idx=['recipes','add','plan','shopping','stats'].indexOf(v);
   if(idx>=0) document.querySelectorAll('nav button')[idx].classList.add('active');
 }
 
@@ -1308,6 +1340,199 @@ function exportPDF(){
     window.print();
     document.getElementById('print-wrapper').style.display='none';
   }, 200);
+}
+
+// ── Stats Dashboard ──────────────────────────────────────────────────────────
+
+const PROTEIN_RULES = [
+  { cat: 'Chicken',     re: /chicken/ },
+  { cat: 'Beef',        re: /beef/ },
+  { cat: 'Lamb',        re: /lamb/ },
+  { cat: 'Pork',        re: /pork|pancetta|bacon|sausage|chorizo|gammon/ },
+  { cat: 'Fish/Seafood',re: /fish|salmon|tuna|prawns|anchov/ },
+];
+const PROTEIN_COLORS = {
+  Chicken: '#2d6a4f', Vegetarian: '#8b6500', Beef: '#a0522d',
+  'Fish/Seafood': '#1a4fa0', Pork: '#8b2080', Lamb: '#6b5a3e'
+};
+const PROTEIN_ORDER = ['Chicken','Beef','Lamb','Pork','Fish/Seafood','Vegetarian'];
+
+function classifyProtein(r) {
+  if (r.proteinCategory) return r.proteinCategory;
+  const ing = r.ingredients.toLowerCase();
+  const match = PROTEIN_RULES.find(({ re }) => re.test(ing));
+  r.proteinCategory = match ? match.cat : 'Vegetarian';
+  return r.proteinCategory;
+}
+
+function buildTrendSVG() {
+  const WEEKS = 26, DAY = 86400000;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dow = today.getDay();
+  const daysToMon = dow === 0 ? 6 : dow - 1;
+  const thisMonday = new Date(today.getTime() - daysToMon * DAY);
+
+  const weekStarts = [];
+  for (let i = WEEKS - 1; i >= 0; i--) weekStarts.push(new Date(thisMonday.getTime() - i * 7 * DAY));
+
+  const weekCooks = weekStarts.map(ws => {
+    const we = new Date(ws.getTime() + 7 * DAY);
+    let n = 0;
+    recipes.forEach(r => r.cookDates.forEach(d => { const dt = new Date(d); if (dt >= ws && dt < we) n++; }));
+    return n;
+  });
+
+  const W = 600, H = 120, pL = 26, pR = 10, pT = 12, pB = 26;
+  const cW = W - pL - pR, cH = H - pT - pB;
+  const maxV = Math.max(...weekCooks, 1);
+  const baseY = pT + cH;
+
+  const pts = weekCooks.map((v, i) => [
+    pL + (i / (WEEKS - 1)) * cW,
+    pT + cH * (1 - v / maxV)
+  ]);
+
+  const areaD = `M${pts[0][0]},${baseY} ${pts.map(([x,y]) => `L${x},${y}`).join(' ')} L${pts[WEEKS-1][0]},${baseY} Z`;
+  const lineP = pts.map(([x,y]) => `${x},${y}`).join(' ');
+
+  const months = [];
+  let lastM = -1;
+  weekStarts.forEach((ws, i) => {
+    const m = ws.getMonth();
+    if (m !== lastM) { months.push({ x: pts[i][0], label: ws.toLocaleDateString('en-GB', { month: 'short' }) }); lastM = m; }
+  });
+
+  const yStep = maxV <= 2 ? 1 : maxV <= 10 ? 2 : 5;
+  const yTicks = [];
+  for (let v = 0; v <= maxV; v += yStep) yTicks.push(v);
+  if (yTicks[yTicks.length - 1] < maxV) yTicks.push(maxV);
+
+  const gridLines = yTicks.map(v => {
+    const y = pT + cH * (1 - v / maxV);
+    return `<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}" stroke="#e5e3dc" stroke-width="1"/>
+            <text x="${pL-3}" y="${y+3.5}" text-anchor="end" font-size="9" fill="#a09d96" font-family="DM Sans,sans-serif">${v}</text>`;
+  }).join('');
+
+  const dots = pts.map(([x,y], i) => weekCooks[i] > 0
+    ? `<circle cx="${x}" cy="${y}" r="3" fill="#2d6a4f"/>`
+    : '').join('');
+
+  const mLabels = months.map(({x, label}) =>
+    `<text x="${x}" y="${H-3}" text-anchor="middle" font-size="10" fill="#6b6860" font-family="DM Sans,sans-serif">${label}</text>`
+  ).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:120px;display:block;" preserveAspectRatio="none">
+    ${gridLines}
+    <path d="${areaD}" fill="#d8f3dc"/>
+    <polyline points="${lineP}" fill="none" stroke="#2d6a4f" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}
+    <line x1="${pL}" y1="${baseY}" x2="${W-pR}" y2="${baseY}" stroke="#ccc9be" stroke-width="1"/>
+    ${mLabels}
+  </svg>`;
+}
+
+function renderStatsDashboard() {
+  const elH = document.getElementById('sd-headline-wrap');
+  const elT = document.getElementById('sd-trend-wrap');
+  const elL = document.getElementById('sd-leaderboards-wrap');
+  const elP = document.getElementById('sd-profile-wrap');
+  if (!elH) return;
+
+  // Protein stats
+  const catCooks = {}, catRecipes = {};
+  PROTEIN_ORDER.forEach(c => { catCooks[c] = 0; catRecipes[c] = 0; });
+  let totalCooks = 0;
+  recipes.forEach(r => {
+    const cat = classifyProtein(r);
+    catCooks[cat] += r.cookDates.length;
+    catRecipes[cat]++;
+    totalCooks += r.cookDates.length;
+  });
+  const totalRecipes = recipes.length;
+
+  // 1. Headline
+  let headline = 'Start cooking to reveal your household\'s flavour profile!';
+  if (totalCooks > 0) {
+    const sorted = Object.entries(catCooks).filter(([,v]) => v > 0).sort(([,a],[,b]) => b - a);
+    if (sorted.length) {
+      const [[c1, n1]] = sorted;
+      const p1 = Math.round(n1 / totalCooks * 100);
+      if (sorted.length >= 2) {
+        const [c2, n2] = sorted[1];
+        const p2 = Math.round(n2 / totalCooks * 100);
+        if (Math.abs(p1 - p2) <= 10) {
+          headline = `You're a <strong>${c1} &amp; ${c2}</strong> household — ${p1 + p2}% of your cooks lean that way.`;
+        } else {
+          headline = `You're a <strong>${c1}</strong> household — ${p1}% of your cooks lean that way.`;
+        }
+      } else {
+        headline = `You're a <strong>${c1}</strong> household — ${p1}% of your cooks lean that way.`;
+      }
+    }
+  }
+  elH.innerHTML = `<div class="sd-section"><p class="sd-headline">${headline}</p></div>`;
+
+  // 2. Trend chart
+  elT.innerHTML = `<div class="sd-section">
+    <div class="sd-section-title">Cooking Trend — last 26 weeks</div>
+    ${buildTrendSVG()}
+  </div>`;
+
+  // 3. Leaderboards
+  const cooked = recipes.filter(r => r.cookDates.length > 0);
+  const top5 = [...cooked].sort((a,b) => b.cookDates.length - a.cookDates.length).slice(0, 5);
+  const under5 = [...cooked].sort((a,b) => a.cookDates.length - b.cookDates.length).slice(0, 5);
+
+  const lbRows = (arr) => arr.length
+    ? arr.map((r, i) => `<div class="sd-lb-item">
+        <span class="sd-lb-rank">${i+1}</span>
+        <span class="sd-lb-name">${r.name}</span>
+        <span class="sd-lb-count">${r.cookDates.length}&times;</span>
+      </div>`).join('')
+    : '<p class="sd-empty">No cooked recipes yet</p>';
+
+  elL.innerHTML = `<div class="sd-two-col" style="margin-bottom:1.25rem;">
+    <div class="sd-card">
+      <div class="sd-card-title">&#127942; Top Recipes</div>
+      ${lbRows(top5)}
+    </div>
+    <div class="sd-card">
+      <div class="sd-card-title">&#128149; Underrated</div>
+      ${lbRows(under5)}
+    </div>
+  </div>`;
+
+  // 4. Profile
+  const renderBars = (getValue) => PROTEIN_ORDER
+    .map(cat => ({ cat, val: getValue(cat) }))
+    .filter(({ val }) => val > 0)
+    .sort((a,b) => b.val - a.val)
+    .map(({ cat, val }) => `<div class="sd-bar-wrap">
+      <div class="sd-bar-label-row">
+        <span class="sd-bar-label">${cat}</span>
+        <span class="sd-bar-pct">${val}%</span>
+      </div>
+      <div class="sd-bar-track">
+        <div class="sd-bar-fill" style="width:${val}%;background:${PROTEIN_COLORS[cat]};"></div>
+      </div>
+    </div>`).join('') || '<p class="sd-empty">No data yet</p>';
+
+  const cookBars = renderBars(cat => totalCooks > 0 ? Math.round(catCooks[cat] / totalCooks * 100) : 0);
+  const recipeBars = renderBars(cat => totalRecipes > 0 ? Math.round(catRecipes[cat] / totalRecipes * 100) : 0);
+
+  elP.innerHTML = `<div class="sd-section">
+    <div class="sd-section-title">Your Profile</div>
+    <div class="sd-two-col">
+      <div>
+        <div class="sd-card-title" style="margin-bottom:0.75rem;">By cook frequency</div>
+        ${cookBars}
+      </div>
+      <div>
+        <div class="sd-card-title" style="margin-bottom:0.75rem;">By recipe count</div>
+        ${recipeBars}
+      </div>
+    </div>
+  </div>`;
 }
 
 document.getElementById('passphrase-input').addEventListener('keydown',e=>{ if(e.key==='Enter') submitPassphrase(); });
