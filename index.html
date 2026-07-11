@@ -70,6 +70,7 @@
     .tag.lunch { background: #e8f1ff; color: #1a4fa0; border-color: transparent; }
     .tag.breakfast { background: #fff8e1; color: #8b6500; border-color: transparent; }
     .tag.side { background: #f0ede8; color: #6b5a3e; border-color: transparent; }
+    .tag.stock { background: #fff4e0; color: #8b5a00; border-color: transparent; }
     .plan-side-note { font-size: 10px; color: #6b5a3e; background: #f0ede8; border-radius: 4px; padding: 2px 6px; margin-top: 4px; display: inline-block; }
     .cook-count { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
     .cook-count.cooked { color: var(--accent); font-weight: 500; }
@@ -305,6 +306,7 @@
     <button onclick="showView('plan')">&#128197; Plan</button>
     <button onclick="showView('shopping')">&#128722; Shopping</button>
     <button onclick="showView('stats')">&#128200; Stats</button>
+    <button id="nav-btn-admin" style="display:none" onclick="showView('admin')">&#128736; Admin</button>
     <button onclick="openCookTonight()">&#127922; Cook Tonight</button>
   </nav>
 </header>
@@ -435,6 +437,36 @@
     <div id="sd-profile-wrap"></div>
   </div>
 
+  <!-- ADMIN (costa only) -->
+  <div id="view-admin" class="view">
+    <div class="page-header"><div class="page-header-text"><h1>Admin — Stock Recipes</h1><p>These recipes are shared with every namespace. Edits and deletes apply globally.</p></div></div>
+    <div class="form-card" style="margin-bottom:1.5rem;">
+      <div class="form-grid">
+        <div class="form-group full"><label>Recipe name *</label><input type="text" id="stock-new-name" placeholder="e.g. Butter Chicken" /></div>
+        <div class="form-group full">
+          <label>Categories (pick all that apply)</label>
+          <div class="cat-picker" id="stock-new-cat-picker">
+            <span class="cat-pill" data-cat="Dinner" onclick="toggleCat(this)">Dinner</span>
+            <span class="cat-pill" data-cat="Pasta" onclick="toggleCat(this)">Pasta</span>
+            <span class="cat-pill" data-cat="Dessert" onclick="toggleCat(this)">Dessert</span>
+            <span class="cat-pill" data-cat="Lunch" onclick="toggleCat(this)">Lunch</span>
+            <span class="cat-pill" data-cat="Breakfast" onclick="toggleCat(this)">Breakfast</span>
+            <span class="cat-pill" data-cat="Side" onclick="toggleCat(this)">Side</span>
+          </div>
+        </div>
+        <div class="form-group full"><label>Ingredients (comma separated) *</label><textarea id="stock-new-ingredients" rows="3" placeholder="e.g. Chicken Breast, Garlic, Butter, Cream..."></textarea></div>
+        <div class="form-group"><label>Link (Instagram, YouTube...)</label><input type="text" id="stock-new-link" placeholder="https://..." /></div>
+        <div class="form-group"><label>Notes</label><input type="text" id="stock-new-notes" placeholder="Tips or reminders..." /></div>
+        <div class="form-group full"><label>Pairs with (for Sides — enter recipe name exactly, comma separated)</label><input type="text" id="stock-new-pairswith" placeholder="e.g. Dry Rub Chicken, Smashed Burgers" /></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="clearStockForm()">Clear</button>
+        <button class="btn btn-primary" onclick="addStockRecipe()">Save stock recipe</button>
+      </div>
+    </div>
+    <div class="recipe-grid" id="admin-stock-grid"></div>
+  </div>
+
 </main>
 
 <!-- MODAL -->
@@ -463,27 +495,29 @@
       <div class="modal-actions">
         <a id="mv-link" href="#" target="_blank" class="btn btn-secondary" style="display:none;text-decoration:none;">View original &#8599;</a>
         <button class="btn btn-secondary" onclick="switchToEdit()">&#9998; Edit</button>
-        <button class="btn btn-danger" onclick="deleteCurrentRecipe()">Delete</button>
+        <button class="btn btn-danger" id="btn-delete-recipe" onclick="deleteCurrentRecipe()">Delete</button>
       </div>
     </div>
     <div id="modal-edit" style="display:none">
       <h2>Edit recipe</h2>
-      <div class="edit-group"><label>Recipe name</label><input type="text" id="edit-name" /></div>
-      <div class="edit-group">
-        <label>Categories</label>
-        <div class="cat-picker" id="edit-cat-picker">
-          <span class="cat-pill" data-cat="Dinner" onclick="toggleCat(this)">Dinner</span>
-          <span class="cat-pill" data-cat="Pasta" onclick="toggleCat(this)">Pasta</span>
-          <span class="cat-pill" data-cat="Dessert" onclick="toggleCat(this)">Dessert</span>
-          <span class="cat-pill" data-cat="Lunch" onclick="toggleCat(this)">Lunch</span>
-          <span class="cat-pill" data-cat="Breakfast" onclick="toggleCat(this)">Breakfast</span>
-          <span class="cat-pill" data-cat="Side" onclick="toggleCat(this)">Side</span>
+      <div id="edit-canonical-fields">
+        <div class="edit-group"><label>Recipe name</label><input type="text" id="edit-name" /></div>
+        <div class="edit-group">
+          <label>Categories</label>
+          <div class="cat-picker" id="edit-cat-picker">
+            <span class="cat-pill" data-cat="Dinner" onclick="toggleCat(this)">Dinner</span>
+            <span class="cat-pill" data-cat="Pasta" onclick="toggleCat(this)">Pasta</span>
+            <span class="cat-pill" data-cat="Dessert" onclick="toggleCat(this)">Dessert</span>
+            <span class="cat-pill" data-cat="Lunch" onclick="toggleCat(this)">Lunch</span>
+            <span class="cat-pill" data-cat="Breakfast" onclick="toggleCat(this)">Breakfast</span>
+            <span class="cat-pill" data-cat="Side" onclick="toggleCat(this)">Side</span>
+          </div>
         </div>
+        <div class="edit-group"><label>Ingredients</label><textarea id="edit-ingredients" rows="3"></textarea></div>
+        <div class="edit-group"><label>Link</label><input type="text" id="edit-link" /></div>
+        <div class="edit-group"><label>Pairs with (for Sides — enter recipe name exactly, comma separated)</label><input type="text" id="edit-pairswith" placeholder="e.g. Dry Rub Chicken, Smashed Burgers" /></div>
       </div>
-      <div class="edit-group"><label>Ingredients</label><textarea id="edit-ingredients" rows="3"></textarea></div>
-      <div class="edit-group"><label>Link</label><input type="text" id="edit-link" /></div>
-      <div class="edit-group"><label>Notes</label><input type="text" id="edit-notes" /></div>
-      <div class="edit-group"><label>Pairs with (for Sides — enter recipe name exactly, comma separated)</label><input type="text" id="edit-pairswith" placeholder="e.g. Dry Rub Chicken, Smashed Burgers" /></div>
+      <div class="edit-group"><label id="edit-notes-label">Notes</label><input type="text" id="edit-notes" /></div>
       <div class="btn-row">
         <button class="btn btn-secondary" onclick="switchToView()">Cancel</button>
         <button class="btn btn-primary" onclick="saveEdit()">Save changes</button>
@@ -525,6 +559,17 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="new-stock-modal" onclick="handleNewStockModalClick(event)">
+  <div class="sides-popup" style="max-width:440px;">
+    <h2 id="ns-title">&#127881; New recipe!</h2>
+    <p id="ns-body"></p>
+    <div class="btn-row" style="justify-content:space-between;">
+      <button class="btn btn-secondary" id="ns-link" onclick="viewNewStockRecipes()">View new recipes</button>
+      <button class="btn btn-primary" onclick="closeNewStockModal()">Dismiss</button>
+    </div>
+  </div>
+</div>
+
 <div class="print-wrapper" id="print-wrapper" style="display:none;">
   <div id="pdf-page"></div>
 </div>
@@ -553,6 +598,10 @@
 <script>
 const API='https://kitchen-loop-api.costa911.workers.dev';
 let _passphrase=localStorage.getItem('tkl_passphrase')||null;
+let _namespace=localStorage.getItem('tkl_namespace')||null;
+let _isAdmin=false;
+let _adminEditMode=false;
+let _newStockCutoff=null;
 
 function showPassphraseModal(){
   document.getElementById('passphrase-overlay').classList.add('open');
@@ -577,8 +626,11 @@ async function submitPassphrase(){
   try{
     const res=await fetch(`${API}/auth`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phrase})});
     if(!res.ok){ document.getElementById('passphrase-error').classList.add('show'); document.getElementById('passphrase-input').select(); return; }
+    const body=await res.json();
     _passphrase=phrase;
+    _namespace=body.namespace;
     localStorage.setItem('tkl_passphrase',phrase);
+    localStorage.setItem('tkl_namespace',_namespace);
     await loadData();
   }catch(e){
     document.getElementById('passphrase-error').classList.add('show');
@@ -589,6 +641,7 @@ async function submitPassphrase(){
 
 function signOut(){
   localStorage.removeItem('tkl_passphrase');
+  localStorage.removeItem('tkl_namespace');
   location.reload();
 }
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -597,90 +650,72 @@ const CAT_ICONS={'Dinner':'🍽️','Pasta':'🍝','Dessert':'🍰','Lunch':'�
 const STAPLES=new Set(['Garlic','Onion','Olive Oil','Worcestershire Sauce','Worchestire Sauce','Milk','Any Mustard','Mustard','Soy Sauce','Black Pepper','Black Peppercorn','Cardamom','Cinnamon','Cloves','Aniseed','Fennel Seeds','Fish Sauce','Chilli','Grated Cheese','Pasta','Baking Powder','Cacao','Canned Chickpeas','Salt','Frozen Corn','Frozen Green Beans','Frozen Peas','Peanut Butter','Sesame Oil','Sesame Seeds','Sriracha','Siracha','Egg Noodles','Anchovies','Bay Leaves','Bay Leaf','Canned Tomatoes','Passata','Tomato Passata','Chicken Stock','Beef Stock','Vegetable Stock','Fish Stock','Cumin','Kunserva','Polenta','Red Wine','Eggs','Tahini','Mayonnaise','Ketchup','BBQ Sauce','Paprika Sweet','Paprika Smokey','Cous Cous','Canned Butter Beans','Canned Kidney Beans','Canned Tuna','Curry Powder','Panko Breadcrumbs','Balsamic Vinegar','Flour','Cornflour','Greek Yogurt','Nutmeg','Coconut Milk','Canned Coconut Milk','Dry Lentils','Turmeric','Garam Masala','Green Pesto','Red Pesto','Water','Rice Wine Vinegar','Baking Soda']);
 const FRESH=['fresh','lemon','lime','tomato','parsley','coriander','basil','mint','ginger','spring onion','cucumber','lettuce','carrot','celery','leek','potato','courgette','aubergine','broccoli','cauliflower','kale','spinach','mushroom','pepper','apple','bread','butter','cream','fish','chicken','beef','lamb','pork','sausage','salmon','white fish','mince','chorizo','pancetta','gammon','bacon','rotisserie','ricotta','feta','cheddar','parmesan','kefalyori','provolone','hard cheese','dumplings','frozen pepper','frozen spinach','frozen mushroom'];
 
-const DR=[
-  {name:'Chicken Pho',tags:'Dinner',ingredients:'Aniseed, Black Peppercorn, Cardamom, Cinnamon, Cloves, Egg Noodles, Fennel Seeds, Fish Sauce, Fresh Lime, Fresh Parsley, Fresh Chilli, Garlic, Ginger, Mustard Seeds, Onion, Rotisserie Chicken, Soy Sauce, Spring Onion, Water',notes:'',link:'https://www.instagram.com/reel/DN4b_V4kQUA/'},
-  {name:'Kale & Ricotta Pasta',tags:'Dinner, Pasta',ingredients:'Black Peppercorn, Garlic, Grated Cheese, Kale, Lemon Zest, Onion, Pasta, Ricotta',notes:'',link:'https://www.instagram.com/reel/DCN6Uo5MjND/'},
-  {name:'Chocolate Chickpea Cookies',tags:'Dessert',ingredients:'Any Chocolate, Any Milk, Baking Powder, Cacao, Canned Chickpeas, Maple Syrup, Salt, Vanilla Essence',notes:'Mix everything in blender, add milk little by little',link:''},
-  {name:'Soba Noodle Salad',tags:'Dinner',ingredients:'Frozen Corn, Frozen Green Beans, Frozen Peas, Frozen Peppers, Garlic, Onion, Peanut Butter, Peanuts, Rice Wine Vinegar, Sesame Oil, Sesame Seeds, Sriracha, Soba Noodles, Soy Sauce',notes:'',link:'https://www.instagram.com/reel/DEX9H1iSgum/'},
-  {name:'Chicken Cacciatore',tags:'Dinner',ingredients:'Anchovies, Bay Leaf, Black Peppercorn, Canned Peeled Tomatoes, Carrot, Chicken Drumsticks, Chicken Stock, Chicken Thighs, Cumin, Fennel Seeds, Garlic, Kunserva, Onion, Polenta, Red Wine, Rosemary, Thyme',notes:'',link:'https://www.instagram.com/reel/DA6kqlzR7HB/'},
-  {name:'Peas on Toast',tags:'Breakfast, Dinner',ingredients:'Black Peppercorn, Bread, Cumin, Eggs, Frozen Peas, Garlic, Lemon, Olive Oil, Tahini',notes:'',link:'https://www.instagram.com/reel/DEf5TFyNgfQ/'},
-  {name:'Egg and Potato Salad',tags:'Dinner',ingredients:'Apple Cider Vinegar, Cucumber, Eggs, Greek Yogurt, Mayonnaise, Mustard, Paprika Smokey, Paprika Sweet, Potato, Red Onion, Spring Onion',notes:'',link:'https://www.youtube.com/shorts/mhw8Eowrmqk'},
-  {name:'Lemon White Chocolate Brownie',tags:'Dessert',ingredients:'Baking Powder, Butter, Eggs, Icing Sugar, Lemon, Salt, Self Raising Flour, Sugar, Vanilla, White Chocolate',notes:'',link:'https://www.instagram.com/reel/DIUmgmMSIxd/'},
-  {name:'Lamb Greek Patties',tags:'Dinner',ingredients:'Balsamic Vinegar, Black Peppercorn, Butter Beans, Canned Chickpeas, Cous Cous, Cumin, Eggs, Fresh Mint, Fresh Parsley, Garlic, Kidney Beans, Lamb Mince, Lemon, Onion, Panko Breadcrumbs, Paprika Sweet, Rosemary',notes:'',link:'https://www.instagram.com/reel/DF98bjjTkZ5/'},
-  {name:'Peanut Crumbed Chicken',tags:'Dinner',ingredients:'Black Peppercorn, Curry Powder, Eggs, Flour, Panko Breadcrumbs, Peanuts, Salt',notes:"Serve with mac'n'cheese, cous cous, or chips",link:'https://www.instagram.com/reel/DGVQ7v-IYSf/'},
-  {name:'Chicken Milanesa',tags:'Dinner, Pasta',ingredients:'Balsamic Vinegar, Breadcrumbs, Chicken Breast, Eggs, Flour, Garlic, Grated Cheese, Onion, Panko Breadcrumbs, Paprika Sweet, Pasta, Rosemary, Thyme, Tomato Passata',notes:'',link:''},
-  {name:'Yorkshire Puddings',tags:'Dinner',ingredients:'Black Peppercorn, Butter, Eggs, Flour, Hard Cheese, Milk, Vegetable Oil',notes:'',link:'https://www.instagram.com/reel/DC9kDF2NRju/'},
-  {name:'Hungarian Mushroom Soup',tags:'Dinner',ingredients:'Beef Stock, Bread, Cornflour, Fresh Parsley, Frozen Mushrooms, Garlic, Greek Yogurt, Lemon, Mushroom Stock, Onion, Paprika Smokey, Paprika Sweet, Rosemary, Soy Sauce, Thyme, Worcestershire Sauce',notes:'',link:'https://www.instagram.com/reel/C73Iw4vMJyv/'},
-  {name:'Chorizo, Leek and Potato Soup',tags:'Dinner',ingredients:'Bay Leaf, Chorizo, Cornflour, Cumin, Fresh Parsley, Leeks, Paprika Sweet, Potato, Vegetable Stock',notes:'',link:'https://www.instagram.com/reel/DBea0lIttMX/'},
-  {name:'Tuna Pasta',tags:'Dinner, Pasta',ingredients:'Black Peppercorn, Egg Yolk, Garlic, Kunserva, Lemon, Pasta, Tuna',notes:'High protein',link:'https://www.instagram.com/reel/DCR1qR4uVc7/'},
-  {name:'Authentic (White) Bolognese',tags:'Dinner, Pasta',ingredients:'Beef Mince, Beef Stock, Carrot, Celery, Flour, Nutmeg, Onion, Pancetta, Pasta, Rosemary',notes:'',link:''},
-  {name:'Sausage & Peas Pasta',tags:'Dinner, Pasta',ingredients:'Cornflour, Frozen Peas, Garlic, Grated Cheese, Onion, Parmesan, Pasta, Pork Stock, Sausage',notes:'',link:'https://www.youtube.com/watch?v=hepwdT_Djng'},
-  {name:'Chilli Garlic Noodles',tags:'Dinner',ingredients:'Chilli, Chilli Crisp, Egg Noodles, Garlic, Ginger, Gochujang Paste, Mayonnaise, Rice Wine Vinegar, Soy Sauce, Spring Onion',notes:'',link:'https://www.instagram.com/reel/C53j30prcYB/'},
-  {name:'Crispy Pan Fried Fish',tags:'Dinner',ingredients:'Flour, Fresh Parsley, Frozen Green Beans, Lemon, Milk, Nutmeg, Paprika Smokey, Paprika Sweet, Potato, White Fish',notes:'',link:'https://www.instagram.com/p/BVVlf1CjiIb/'},
-  {name:'Courgette Lasagna',tags:'Dinner',ingredients:'Breadcrumbs, Courgette, Flour, Gammon, Garlic, Grated Cheese, Milk, Olives, Onion, Provolone',notes:'',link:'https://www.instagram.com/reel/ChKo2WuDeYO/'},
-  {name:'Chickpea Pita',tags:'Dinner, Lunch',ingredients:'Canned Chickpeas, Frozen Peppers, Garlic, Kunserva, Onion, Paprika Smokey, Paprika Sweet, Pitas',notes:'',link:'https://www.instagram.com/reel/CuXiplVKuA7/'},
-  {name:'Gochujang Noodles',tags:'Dinner',ingredients:'Broccoli, Dumplings, Egg Noodles, Gochujang Paste, Honey, Lime, Miso Paste, Rice Wine Vinegar, Sesame Seeds, Soy Sauce, Spring Onion, Tahini',notes:'',link:'https://www.instagram.com/reel/CxGX_2GKiCb/'},
-  {name:'Samkeh Harra',tags:'Dinner',ingredients:'Almonds, Chilli, Fresh Coriander, Garlic, Lemon, Paprika Smokey, Paprika Sweet, Sesame Oil, Sesame Seeds, Tahini, White Fish',notes:'Fish in Tahini Sauce',link:'https://www.instagram.com/reel/CuZit8tA-WS/'},
-  {name:'Thai Green Noodles',tags:'Dinner',ingredients:'Canned Coconut Milk, Carrot, Frozen Green Beans, Frozen Peppers, Green Curry Paste, Rice Noodles, Soy Sauce',notes:'',link:'https://www.instagram.com/reel/C145V87tYiY/'},
-  {name:'Smashed Burgers',tags:'Dinner',ingredients:'Beef Mince, Buns, Cheddar, Lettuce, Onion, Potato',notes:'',link:'https://www.instagram.com/reel/C3F_Ro-JrZk/'},
-  {name:'Pad Kra Pao',tags:'Dinner',ingredients:'Beef Mince, Chilli, Chinese Five Spice, Eggs, Fish Sauce, Fresh Basil, Garlic, Honey, Onion, Oyster Sauce, Rice, Sesame Oil, Soy Sauce, Spring Onion',notes:'',link:'https://www.instagram.com/reel/C0MlM1FrLYA/'},
-  {name:'Saag',tags:'Dinner',ingredients:'Coriander Powder, Cumin, Curry Powder, Fresh Tomatoes, Frozen Spinach, Garlic, Ginger, Lemon, Onion, Turmeric, Vegetable Stock, Yogurt',notes:'',link:'https://www.instagram.com/p/CMBH1JGgXan/'},
-  {name:'Burger Wraps',tags:'Dinner',ingredients:'Beef Mince, Fresh Tomatoes, Onion, Tortillas, Yogurt',notes:'',link:''},
-  {name:'Thai Drunken Noodles',tags:'Dinner',ingredients:'Chicken Thighs, Chilli, Fish Sauce, Fresh Basil, Garlic, Ginger, Honey, Onion, Oyster Sauce, Rice Noodles, Soy Sauce, Spring Onion',notes:'',link:'https://www.instagram.com/p/B4rNKPwHEAK/'},
-  {name:'Chicken Laksa',tags:'Dinner',ingredients:'Canned Coconut Milk, Chicken Drumsticks, Chicken Stock, Chilli, Curry Paste, Egg Noodles, Fish Sauce, Fresh Coriander, Frozen Green Beans, Garlic, Ginger, Sweet Corn',notes:'',link:'https://www.instagram.com/p/CJjtpxgAaul/'},
-  {name:'Peanut & Sweetcorn Fritters',tags:'Dinner',ingredients:'Baking Soda, Cornflour, Eggs, Flour, Fresh Coriander, Peanut Butter, Peanuts, Sesame Oil, Soy Sauce, Spring Onion, Sweet Corn',notes:'',link:'https://www.instagram.com/p/CNUX66YA_Jx/'},
-  {name:'Samosa Pie',tags:'Dinner',ingredients:'Cauliflower, Coriander Powder, Curry Powder, Fennel Seeds, Frozen Peas, Frozen Spinach, Garlic, Ginger, Lime, Onion, Pastry, Potato, Spring Onion, Turmeric, Vegetable Stock',notes:'',link:'https://www.instagram.com/tv/CSo7mWwIO79/'},
-  {name:'Aubergine Katsu Curry',tags:'Dinner',ingredients:'Aubergine, Carrot, Cornflour, Curry Powder, Eggs, Garam Masala, Garlic, Ginger, Honey, Lemon, Onion, Panko Breadcrumbs, Sesame Oil, Sesame Seeds, Soy Sauce, Spring Onion, Vegetable Stock',notes:'',link:'https://www.instagram.com/tv/CBlTVnCIpkK/'},
-  {name:'Chicken Satay Curry',tags:'Dinner',ingredients:'Canned Coconut Milk, Cayenne Pepper, Chicken Stock, Chicken Thighs, Coriander Powder, Cumin, Curry Powder, Garlic, Honey, Lime, Onion, Paprika Smokey, Paprika Sweet, Peanut Butter, Peanuts, Soy Sauce, Turmeric',notes:'',link:'https://www.instagram.com/tv/CY9hPTeB-he/'},
-  {name:'Butter Chicken',tags:'Dinner',ingredients:'Butter, Cashew Nuts, Cayenne Pepper, Chicken Breast, Coriander Powder, Cumin, Fresh Coriander, Fresh Parsley, Fresh Tomatoes, Garam Masala, Garlic, Ginger, Lemon, Onion, Yogurt',notes:'',link:'https://www.instagram.com/reel/CmldeiFtlmV/'},
-  {name:'Pad Thai',tags:'Dinner',ingredients:'Brown Sugar, Cayenne Pepper, Chicken Breast, Eggs, Fish Sauce, Garlic, Lime, Onion, Oyster Sauce, Peanuts, Rice Noodles, Spring Onion, Tamarind Puree',notes:'',link:'https://www.instagram.com/reel/C3Epq0xvtlW/'},
-  {name:'Coconut Daal',tags:'Dinner',ingredients:'Black Peppercorn, Canned Coconut Milk, Canned Tomatoes, Cayenne Pepper, Curry Powder, Fresh Coriander, Fresh Parsley, Frozen Peas, Garlic, Ginger, Onion, Red Lentils, Turmeric, Yogurt',notes:'',link:'https://www.instagram.com/p/CNmJK6KgxB0/'},
-  {name:'Chettinad Chicken Curry',tags:'Dinner',ingredients:'Bay Leaf, Black Peppercorn, Canned Tomatoes, Cardamom, Chicken Thighs, Chilli, Cinnamon, Cloves, Coriander Powder, Cumin, Fennel Seeds, Garlic, Ginger, Grated Coconut, Lemon, Onion, Turmeric',notes:'',link:'https://www.instagram.com/reel/C3TKZSnIAdn/'},
-  {name:'Salmon En Croute',tags:'Dinner',ingredients:'Eggs, Frozen Spinach, Garlic, Onion, Pastry, Red Pesto, Salmon Fillet',notes:'',link:'https://www.instagram.com/tv/CKjp_uND7uD/'},
-  {name:'Salmon Curry',tags:'Dinner',ingredients:'Canned Coconut Milk, Cayenne Pepper, Coriander Powder, Fresh Tomatoes, Garlic, Ginger, Mustard Seeds, Onion, Salmon Fillet, Turmeric',notes:'',link:'https://www.instagram.com/reel/CbMpTguj-tq/'},
-  {name:'Daal Makhani',tags:'Dinner',ingredients:'Cayenne Pepper, Garam Masala, Garlic, Rice, Tomato Passata, Tomato Paste, Turmeric',notes:'',link:'https://www.instagram.com/reel/Cg81H_CoQpr/'},
-  {name:'Dry Rub Chicken',tags:'Dinner',ingredients:'Allspice, Cardamom, Cayenne Pepper, Chicken Drumsticks, Cornflour, Garlic Powder, Ginger, Nutmeg, Paprika Smokey, Paprika Sweet',notes:'',link:'https://www.instagram.com/p/B_fRMlHAB8V/'},
-  {name:'Pasta Carbonara',tags:'Dinner, Pasta',ingredients:'Eggs, Hard Cheese, Pancetta, Pasta',notes:'',link:'https://www.instagram.com/reel/CcA0GOwlcwk/'},
-  {name:'Burnt Leeks & Cannellini Bean Soup',tags:'Dinner',ingredients:'Bread, Cannellini Beans, Flour, Garlic, Leeks, Milk, Nutritional Yeast, Rosemary, White Wine',notes:'',link:'https://www.instagram.com/reel/CvR14mcqGB5/'},
-  {name:'Chilli in a Taco Shell',tags:'Dinner',ingredients:'Bell Peppers, Black Beans, Chilli, Coriander Powder, Cumin, Fresh Tomatoes, Garlic, Kidney Beans, Lime, Onion, Paprika Smokey, Paprika Sweet, Parsley, Rice, Tomato Passata, Tomato Paste, Tortillas',notes:'',link:'https://www.instagram.com/tv/COaKK23NWlB/'},
-  {name:'Broccoli & Feta Pie',tags:'Dinner',ingredients:'Broccoli, Feta, Eggs, Kefalyori, Milk, Greek Yogurt, Olive Oil, Flour',notes:'',link:'https://www.instagram.com/reel/DRr5fa3jERQ/'},
-  {name:'Sweetcorn & Tuna Dip',tags:'Lunch',ingredients:'Tuna, Anchovies, Garlic, Kunserva, Kidney Beans, Ketchup, Canned Sweet Corn, Salt, Black Pepper',notes:'Serve with crackers',link:''},
-  {name:'Egg & Sardines Dip',tags:'Lunch',ingredients:'Boiled Eggs, Sardines, Mustard, Kunserva, Olives, Onions, Basil, Garlic, Lemon, Black Pepper',notes:'Serve with crackers',link:''},
-  {name:'Tomato Paste & Cucumbers',tags:'Lunch',ingredients:'Kunserva, Cucumber, Olive Oil, Black Peppercorn, Salt',notes:'Serve with crackers',link:''},
-  {name:'Ham & Cheese',tags:'Lunch',ingredients:'Ham, Cheddar, Mustard, Butter',notes:'Serve on bread or crackers',link:''},
-  {name:'Bean Salad',tags:'Lunch',ingredients:'Canned Butter Beans, Canned Kidney Beans, Lettuce, Olive Oil, Lemon, Black Peppercorn, Salt',notes:'',link:''},
-];
-
-let recipes=[], plan=[], planHistory=[], shoppingChecked={}, activeModalId=null, recipeFilter=null, planTickIdx=null;
+let recipes=[], stockRecipes=[], userRecipes=[], overlays={}, plan=[], planHistory=[], shoppingChecked={}, lastSeenStockTimestamp=null, activeModalId=null, recipeFilter=null, planTickIdx=null;
 let _saveTimer=null;
+
+function remergeRecipes(){
+  const mergedStock=stockRecipes.map(sr=>{
+    const ov=(overlays && overlays[sr.id])||{};
+    return {
+      id: sr.id, name: sr.name, tags: sr.tags, ingredients: sr.ingredients,
+      link: sr.link||'', pairsWith: sr.pairsWith||'',
+      canonicalNotes: sr.notes||'', personalNotes: ov.personalNotes||'',
+      notes: ov.personalNotes || sr.notes || '',
+      cookDates: ov.cookDates ? [...ov.cookDates] : [],
+      isStock: true, addedDate: sr.addedDate,
+    };
+  });
+  const mergedUser=userRecipes.map(r=>({ ...r, isStock:false, cookDates:r.cookDates||[], pairsWith:r.pairsWith||'' }));
+  recipes=[...mergedStock, ...mergedUser];
+}
 
 async function loadData(){
   if(!_passphrase){ showPassphraseModal(); return; }
+  if(_passphrase && !_namespace){
+    try{
+      const authRes=await fetch(`${API}/auth`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phrase:_passphrase})});
+      if(authRes.ok){ const b=await authRes.json(); _namespace=b.namespace; localStorage.setItem('tkl_namespace',_namespace); }
+    }catch(e){}
+  }
   try{
     const res=await fetch(`${API}/data`,{headers:{'X-Passphrase':_passphrase}});
-    if(res.status===401){ localStorage.removeItem('tkl_passphrase'); _passphrase=null; showPassphraseModal(); return; }
+    if(res.status===401){ localStorage.removeItem('tkl_passphrase'); localStorage.removeItem('tkl_namespace'); _passphrase=null; _namespace=null; showPassphraseModal(); return; }
     if(!res.ok){ hidePassphraseModal(); showToast('Failed to load data — try refreshing'); renderAll(); return; }
     const d=await res.json();
-    recipes=d.recipes||[];
-    recipes.forEach(r=>{if(!r.cookDates)r.cookDates=[];if(!r.pairsWith)r.pairsWith='';});
+    stockRecipes=d.stockRecipes||[];
+    userRecipes=d.userRecipes||[];
+    overlays=d.overlays||{};
+    remergeRecipes();
     plan=d.plan||[];
     plan.forEach(p=>{if(p.cooked===undefined)p.cooked=false;if(p.cookedDate===undefined)p.cookedDate=null;});
     planHistory=d.planHistory||[];
     shoppingChecked=d.shoppingChecked||{};
+    lastSeenStockTimestamp=d.lastSeenStockTimestamp||new Date().toISOString();
+    _isAdmin=(_namespace==='costa');
+    document.getElementById('nav-btn-admin').style.display=_isAdmin?'':'none';
     hidePassphraseModal();
   }catch(e){
     hidePassphraseModal();
-    recipes=DR.map((x,i)=>({...x,id:i+1,cookDates:[],pairsWith:''}));
+    stockRecipes=[]; userRecipes=[]; overlays={}; recipes=[];
     plan=[]; shoppingChecked={};
-    showToast('Offline — showing default recipes');
+    showToast('Offline — could not load recipes');
   }
   renderAll();
+  if(stockRecipes.length) checkForNewStockRecipes(stockRecipes, lastSeenStockTimestamp);
 }
 function saveData(){
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(async()=>{
+    userRecipes=recipes.filter(r=>!r.isStock).map(({isStock, proteinCategory, ...rest})=>rest);
+    overlays={};
+    recipes.filter(r=>r.isStock).forEach(r=>{
+      const ov={};
+      if(r.cookDates && r.cookDates.length) ov.cookDates=r.cookDates;
+      if(r.personalNotes) ov.personalNotes=r.personalNotes;
+      if(Object.keys(ov).length) overlays[r.id]=ov;
+    });
     try{
-      const res=await fetch(`${API}/data`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify({recipes,plan,planHistory,shoppingChecked})});
+      const res=await fetch(`${API}/data`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify({userRecipes,overlays,plan,planHistory,shoppingChecked,lastSeenStockTimestamp})});
       if(!res.ok) showToast('Save failed — check connection');
     }catch(e){ showToast('Save failed — check connection'); }
   },500);
@@ -688,7 +723,16 @@ function saveData(){
 function saveR(){ saveData(); }
 function saveP(){ saveData(); }
 function saveS(){ saveData(); }
-function renderAll(){ renderStats(); renderRecipes(); renderCookLog(); renderCategories(); renderPlan(); renderPlanHistory(); renderShopping(); renderStatsDashboard(); }
+
+async function saveStockEdit(){
+  try{
+    const res=await fetch(`${API}/stock`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify(stockRecipes)});
+    if(!res.ok){ showToast('Stock save failed — check connection'); return false; }
+    return true;
+  }catch(e){ showToast('Stock save failed — check connection'); return false; }
+}
+
+function renderAll(){ renderStats(); renderRecipes(); renderCookLog(); renderCategories(); renderPlan(); renderPlanHistory(); renderShopping(); renderStatsDashboard(); renderAdminStockList(); }
 
 function getCookDaySet(){
   const days=new Set();
@@ -765,6 +809,8 @@ function renderRecipes(){
   } else if(recipeFilter && recipeFilter.startsWith('cat:')){
     const cat=recipeFilter.replace('cat:','');
     f=[...recipes].filter(r=>r.tags.split(',').map(t=>t.trim()).includes(cat)).sort((a,b)=>a.name.localeCompare(b.name));
+  } else if(recipeFilter==='newstock'){
+    f=[...recipes].filter(r=>r.isStock && r.addedDate && r.addedDate>_newStockCutoff).sort((a,b)=>a.name.localeCompare(b.name));
   } else {
     const q=document.getElementById('search-input').value.toLowerCase();
     const cat=document.getElementById('cat-filter').value;
@@ -781,9 +827,9 @@ function renderRecipes(){
   const grid=document.getElementById('recipe-grid');
   if(!f.length){grid.innerHTML='<div class="empty-state"><div class="empty-icon">&#127859;</div>No recipes found</div>';return;}
   grid.innerHTML=f.map(r=>`
-    <div class="recipe-card" onclick="openModal(${r.id})">
+    <div class="recipe-card" onclick="openModal(${typeof r.id==='string'?`'${r.id}'`:r.id})">
       <h3>${r.name}</h3>
-      <div class="tags">${r.tags.split(',').map(t=>`<span class="tag ${tc(t)}">${t.trim()}</span>`).join('')}</div>
+      <div class="tags">${r.tags.split(',').map(t=>`<span class="tag ${tc(t)}">${t.trim()}</span>`).join('')}${r.isStock?'<span class="tag stock">🔁</span>':''}</div>
       <p class="card-ingredients">${r.ingredients.split(',').slice(0,5).map(i=>i.trim()).join(', ')}${r.ingredients.split(',').length>5?'&hellip;':''}</p>
       <p class="cook-count ${r.cookDates.length>0?'cooked':''}">${r.cookDates.length>0?`Cooked ${r.cookDates.length}\xd7`:'Not cooked yet'}</p>
     </div>`).join('');
@@ -854,7 +900,7 @@ function renderCookLog(){
       const tooltipDates=r.cookDates.map((d,i)=>`Cook ${i+1}: ${new Date(d).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`).join('<br>');
       return `<tr>
         <td style="font-weight:500">${r.name}</td>
-        <td><div class="tags" style="margin:0">${r.tags.split(',').map(t=>`<span class="tag ${tc(t)}">${t.trim()}</span>`).join('')}</div></td>
+        <td><div class="tags" style="margin:0">${r.tags.split(',').map(t=>`<span class="tag ${tc(t)}">${t.trim()}</span>`).join('')}${r.isStock?'<span class="tag stock">🔁</span>':''}</div></td>
         <td>
           <div class="tooltip-wrap">
             <span class="cook-num-link">${r.cookDates.length}</span>
@@ -864,9 +910,9 @@ function renderCookLog(){
         <td style="color:var(--text-muted)">${last}</td>
         <td>
           <div class="cook-adjust">
-            <button class="adj-btn minus" onclick="adjustCook(${r.id},-1)" title="Remove one cook">−</button>
+            <button class="adj-btn minus" onclick="adjustCook(${typeof r.id==='string'?`'${r.id}'`:r.id},-1)" title="Remove one cook">−</button>
             <span class="cook-num">${r.cookDates.length}</span>
-            <button class="adj-btn plus" onclick="adjustCook(${r.id},1)" title="Add one cook">+</button>
+            <button class="adj-btn plus" onclick="adjustCook(${typeof r.id==='string'?`'${r.id}'`:r.id},1)" title="Add one cook">+</button>
           </div>
         </td>
       </tr>`;
@@ -909,7 +955,7 @@ function openModal(id){
   const r=recipes.find(x=>x.id===id); if(!r) return;
   activeModalId=id;
   document.getElementById('mv-title').textContent=r.name;
-  document.getElementById('mv-tags').innerHTML=r.tags.split(',').map(t=>`<span class="tag ${tc(t)}">${t.trim()}</span>`).join('');
+  document.getElementById('mv-tags').innerHTML=r.tags.split(',').map(t=>`<span class="tag ${tc(t)}">${t.trim()}</span>`).join('')+(r.isStock?'<span class="tag stock">🔁 Stock</span>':'');
   const last=r.cookDates.length?new Date(r.cookDates[r.cookDates.length-1]).toLocaleDateString():'';
   document.getElementById('mv-cook-count').textContent=r.cookDates.length>0?`Cooked ${r.cookDates.length} time${r.cookDates.length>1?'s':''}${last?' · Last: '+last:''}`:'Never cooked yet';
   document.getElementById('mv-ingredients').textContent=r.ingredients;
@@ -920,12 +966,13 @@ function openModal(id){
   document.getElementById('btn-cooked-it').style.display='';
   document.getElementById('cook-confirm-prompt').style.display='none';
   document.getElementById('cook-date-picker-wrap').style.display='none';
+  document.getElementById('btn-delete-recipe').style.display=(r.isStock && !_adminEditMode)?'none':'';
   document.getElementById('modal-view').style.display='block';
   document.getElementById('modal-edit').style.display='none';
   document.getElementById('recipe-modal').classList.add('open');
 }
 
-function closeModal(){ document.getElementById('recipe-modal').classList.remove('open'); activeModalId=null; }
+function closeModal(){ document.getElementById('recipe-modal').classList.remove('open'); activeModalId=null; _adminEditMode=false; }
 function handleModalClick(e){ if(e.target===document.getElementById('recipe-modal')) closeModal(); }
 
 function logCook(){
@@ -970,10 +1017,13 @@ function doLogCook(dateISO){
 
 function switchToEdit(){
   const r=recipes.find(x=>x.id===activeModalId); if(!r) return;
+  const lockedDown=r.isStock && !_adminEditMode;
+  document.getElementById('edit-canonical-fields').style.display=lockedDown?'none':'';
+  document.getElementById('edit-notes-label').textContent=lockedDown?'Your personal notes':'Notes';
   document.getElementById('edit-name').value=r.name;
   document.getElementById('edit-ingredients').value=r.ingredients;
   document.getElementById('edit-link').value=r.link||'';
-  document.getElementById('edit-notes').value=r.notes||'';
+  document.getElementById('edit-notes').value=lockedDown?(r.personalNotes||''):(r.notes||'');
   document.getElementById('edit-pairswith').value=r.pairsWith||'';
   const cur=r.tags.split(',').map(t=>t.trim());
   document.querySelectorAll('#edit-cat-picker .cat-pill').forEach(p=>p.classList.toggle('selected',cur.includes(p.dataset.cat)));
@@ -983,20 +1033,52 @@ function switchToEdit(){
 
 function switchToView(){ document.getElementById('modal-view').style.display='block'; document.getElementById('modal-edit').style.display='none'; }
 
-function saveEdit(){
+async function saveEdit(){
   const r=recipes.find(x=>x.id===activeModalId); if(!r) return;
+
+  if(r.isStock && !_adminEditMode){
+    r.personalNotes=document.getElementById('edit-notes').value.trim();
+    r.notes=r.personalNotes || r.canonicalNotes;
+    saveR(); renderAll(); openModal(activeModalId); showToast('Personal notes updated!');
+    return;
+  }
+
   const name=document.getElementById('edit-name').value.trim();
   const ingredients=document.getElementById('edit-ingredients').value.trim();
   if(!name||!ingredients){showToast('Name and ingredients required');return;}
   const cats=[...document.querySelectorAll('#edit-cat-picker .cat-pill.selected')].map(p=>p.dataset.cat);
   r.name=name; r.tags=cats.length?cats.join(', '):'Dinner';
-  r.ingredients=ingredients; r.link=document.getElementById('edit-link').value.trim(); r.notes=document.getElementById('edit-notes').value.trim(); r.pairsWith=document.getElementById('edit-pairswith').value.trim();
+  r.ingredients=ingredients; r.link=document.getElementById('edit-link').value.trim();
+  const notes=document.getElementById('edit-notes').value.trim();
+  r.pairsWith=document.getElementById('edit-pairswith').value.trim();
+
+  if(_adminEditMode && r.isStock){
+    r.notes=notes; r.canonicalNotes=notes;
+    const stockR=stockRecipes.find(s=>s.id===r.id);
+    if(stockR){ stockR.name=name; stockR.tags=r.tags; stockR.ingredients=ingredients; stockR.link=r.link; stockR.notes=notes; stockR.pairsWith=r.pairsWith; }
+    const ok=await saveStockEdit();
+    remergeRecipes(); renderAll(); if(ok){ openModal(activeModalId); showToast('Stock recipe updated!'); }
+    return;
+  }
+
+  r.notes=notes;
   saveR(); renderAll(); openModal(activeModalId); showToast('Recipe updated!');
 }
 
-function deleteCurrentRecipe(){
+async function deleteCurrentRecipe(){
   if(!activeModalId) return;
+  const r=recipes.find(x=>x.id===activeModalId); if(!r) return;
+  if(r.isStock && !_adminEditMode){ showToast('Stock recipes can only be deleted from Admin'); return; }
   if(!confirm('Delete this recipe? Cannot be undone.')) return;
+
+  if(_adminEditMode && r.isStock){
+    stockRecipes=stockRecipes.filter(s=>s.id!==r.id);
+    const ok=await saveStockEdit();
+    remergeRecipes(); closeModal(); renderAll();
+    if(ok) showToast('Stock recipe deleted');
+    return;
+  }
+
   recipes=recipes.filter(r=>r.id!==activeModalId); saveR(); closeModal(); renderAll(); showToast('Recipe deleted');
 }
 
@@ -1006,7 +1088,7 @@ function showView(v){
   document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
-  const idx=['recipes','add','plan','shopping','stats'].indexOf(v);
+  const idx=['recipes','add','plan','shopping','stats','admin'].indexOf(v);
   if(idx>=0) document.querySelectorAll('nav button')[idx].classList.add('active');
 }
 
@@ -1022,6 +1104,90 @@ function addRecipe(){
 function clearForm(){
   ['new-name','new-ingredients','new-notes','new-link','new-pairswith'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('#new-cat-picker .cat-pill').forEach(p=>p.classList.remove('selected'));
+}
+
+// ── Admin (stock recipe management, costa only) ─────────────────────────────
+
+function renderAdminStockList(){
+  const grid=document.getElementById('admin-stock-grid');
+  if(!grid) return;
+  if(!_isAdmin){ grid.innerHTML=''; return; }
+  if(!stockRecipes.length){ grid.innerHTML='<div class="empty-state"><div class="empty-icon">&#127859;</div>No stock recipes</div>'; return; }
+  const sorted=[...stockRecipes].sort((a,b)=>a.name.localeCompare(b.name));
+  grid.innerHTML=sorted.map(r=>`
+    <div class="recipe-card" onclick="openAdminModal('${r.id}')">
+      <h3>${r.name}</h3>
+      <div class="tags">${r.tags.split(',').map(t=>`<span class="tag ${tc(t)}">${t.trim()}</span>`).join('')}</div>
+      <p class="card-ingredients">${r.ingredients.split(',').slice(0,5).map(i=>i.trim()).join(', ')}${r.ingredients.split(',').length>5?'&hellip;':''}</p>
+    </div>`).join('');
+}
+
+function openAdminModal(id){
+  _adminEditMode=true;
+  openModal(id);
+}
+
+function addStockRecipe(){
+  const name=document.getElementById('stock-new-name').value.trim();
+  const ingredients=document.getElementById('stock-new-ingredients').value.trim();
+  if(!name||!ingredients){showToast('Name and ingredients are required');return;}
+  const cats=[...document.querySelectorAll('#stock-new-cat-picker .cat-pill.selected')].map(p=>p.dataset.cat);
+  const nextNum=Math.max(0, ...stockRecipes.map(r=>parseInt(r.id.split('-')[1],10)||0))+1;
+  stockRecipes.push({
+    id: `stock-${nextNum}`,
+    name, tags: cats.length?cats.join(', '):'Dinner', ingredients,
+    notes: document.getElementById('stock-new-notes').value.trim(),
+    link: document.getElementById('stock-new-link').value.trim(),
+    pairsWith: document.getElementById('stock-new-pairswith').value.trim(),
+    isStock: true,
+    addedDate: new Date().toISOString(),
+  });
+  saveStockEdit().then(ok=>{
+    remergeRecipes(); clearStockForm(); renderAll();
+    if(ok) showToast('Stock recipe saved!');
+  });
+}
+
+function clearStockForm(){
+  ['stock-new-name','stock-new-ingredients','stock-new-notes','stock-new-link','stock-new-pairswith'].forEach(id=>document.getElementById(id).value='');
+  document.querySelectorAll('#stock-new-cat-picker .cat-pill').forEach(p=>p.classList.remove('selected'));
+}
+
+// ── New stock recipe notification ────────────────────────────────────────────
+
+let _pendingLastSeen=null;
+
+function checkForNewStockRecipes(stock, lastSeenISO){
+  const fresh=stock.filter(r=>r.addedDate && r.addedDate>lastSeenISO);
+  if(!fresh.length) return;
+  _newStockCutoff=lastSeenISO;
+  _pendingLastSeen=new Date().toISOString();
+  if(fresh.length===1){
+    document.getElementById('ns-title').textContent='🎉 New recipe!';
+    document.getElementById('ns-body').textContent=`"${fresh[0].name}" was just added to the shared recipe book.`;
+  } else {
+    document.getElementById('ns-title').textContent='🎉 New recipes!';
+    document.getElementById('ns-body').textContent=`${fresh.length} new recipes were just added to the shared recipe book.`;
+  }
+  document.getElementById('new-stock-modal').classList.add('open');
+}
+
+function closeNewStockModal(){
+  document.getElementById('new-stock-modal').classList.remove('open');
+  if(_pendingLastSeen){ lastSeenStockTimestamp=_pendingLastSeen; _pendingLastSeen=null; saveR(); }
+}
+
+function handleNewStockModalClick(e){ if(e.target===document.getElementById('new-stock-modal')) closeNewStockModal(); }
+
+function viewNewStockRecipes(){
+  closeNewStockModal();
+  recipeFilter='newstock';
+  document.getElementById('recipes-title').textContent='New Recipes';
+  document.getElementById('recipes-subtitle').textContent='Recently added to the shared recipe book';
+  document.getElementById('recipes-back-wrap').style.display='block';
+  document.getElementById('recipes-toolbar').style.display='none';
+  showView('recipes');
+  renderRecipes();
 }
 
 function isSide(r){ return r.tags.split(',').map(t=>t.trim()).includes('Side'); }
@@ -1086,7 +1252,7 @@ function _ctPool(){ return recipes.filter(r=>r.tags.split(',').map(t=>t.trim()).
 function _ctShow(r){
   _ctCurrentId=r.id;
   document.getElementById('ct-name').textContent=r.name;
-  document.getElementById('ct-tags').innerHTML=r.tags.split(',').map(t=>`<span class="tag ${tc(t)}">${t.trim()}</span>`).join('');
+  document.getElementById('ct-tags').innerHTML=r.tags.split(',').map(t=>`<span class="tag ${tc(t)}">${t.trim()}</span>`).join('')+(r.isStock?'<span class="tag stock">🔁</span>':'');
   const ingList=r.ingredients.split(',');
   document.getElementById('ct-ingredients').textContent=ingList.slice(0,6).map(i=>i.trim()).join(', ')+(ingList.length>6?'…':'');
   document.getElementById('ct-cook-count').textContent=r.cookDates.length>0?`Cooked ${r.cookDates.length}\xd7`:'Not cooked yet';
