@@ -92,6 +92,13 @@
     .log-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: middle; }
     .log-table tr:last-child td { border-bottom: none; }
     .log-table tr:hover td { background: var(--bg); }
+    .log-table th.sortable { cursor: pointer; user-select: none; }
+    .log-table th.sortable:hover { color: var(--text); }
+    .log-table th.sortable .sort-arrow { opacity: 0.5; margin-left: 3px; }
+    .admin-tabs { display: flex; gap: 6px; margin-bottom: 1.25rem; }
+    .admin-tab-btn { padding: 6px 16px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+    .admin-tab-btn:hover { background: var(--bg); color: var(--text); }
+    .admin-tab-btn.active { background: var(--text); color: var(--surface); border-color: var(--text); }
     .cook-adjust { display: flex; align-items: center; gap: 8px; }
     .adj-btn { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 16px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; font-family: 'DM Sans', sans-serif; }
     .adj-btn:hover { background: var(--bg); border-color: var(--border-mid); }
@@ -439,32 +446,43 @@
 
   <!-- ADMIN (costa only) -->
   <div id="view-admin" class="view">
-    <div class="page-header"><div class="page-header-text"><h1>Admin — Stock Recipes</h1><p>These recipes are shared with every namespace. Edits and deletes apply globally.</p></div></div>
-    <div class="form-card" style="margin-bottom:1.5rem;">
-      <div class="form-grid">
-        <div class="form-group full"><label>Recipe name *</label><input type="text" id="stock-new-name" placeholder="e.g. Butter Chicken" /></div>
-        <div class="form-group full">
-          <label>Categories (pick all that apply)</label>
-          <div class="cat-picker" id="stock-new-cat-picker">
-            <span class="cat-pill" data-cat="Dinner" onclick="toggleCat(this)">Dinner</span>
-            <span class="cat-pill" data-cat="Pasta" onclick="toggleCat(this)">Pasta</span>
-            <span class="cat-pill" data-cat="Dessert" onclick="toggleCat(this)">Dessert</span>
-            <span class="cat-pill" data-cat="Lunch" onclick="toggleCat(this)">Lunch</span>
-            <span class="cat-pill" data-cat="Breakfast" onclick="toggleCat(this)">Breakfast</span>
-            <span class="cat-pill" data-cat="Side" onclick="toggleCat(this)">Side</span>
-          </div>
-        </div>
-        <div class="form-group full"><label>Ingredients (comma separated) *</label><textarea id="stock-new-ingredients" rows="3" placeholder="e.g. Chicken Breast, Garlic, Butter, Cream..."></textarea></div>
-        <div class="form-group"><label>Link (Instagram, YouTube...)</label><input type="text" id="stock-new-link" placeholder="https://..." /></div>
-        <div class="form-group"><label>Notes</label><input type="text" id="stock-new-notes" placeholder="Tips or reminders..." /></div>
-        <div class="form-group full"><label>Pairs with (for Sides — enter recipe name exactly, comma separated)</label><input type="text" id="stock-new-pairswith" placeholder="e.g. Dry Rub Chicken, Smashed Burgers" /></div>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-secondary" onclick="clearStockForm()">Clear</button>
-        <button class="btn btn-primary" onclick="addStockRecipe()">Save stock recipe</button>
-      </div>
+    <div class="page-header"><div class="page-header-text"><h1>Admin</h1><p>Stock recipes are shared with every namespace. Activity is visible to costa only.</p></div></div>
+    <div class="admin-tabs">
+      <button class="admin-tab-btn active" id="admin-tab-btn-stock" onclick="showAdminTab('stock')">Stock Recipes</button>
+      <button class="admin-tab-btn" id="admin-tab-btn-activity" onclick="showAdminTab('activity')">Activity</button>
     </div>
-    <div class="recipe-grid" id="admin-stock-grid"></div>
+
+    <div id="admin-tab-stock">
+      <div class="form-card" style="margin-bottom:1.5rem;">
+        <div class="form-grid">
+          <div class="form-group full"><label>Recipe name *</label><input type="text" id="stock-new-name" placeholder="e.g. Butter Chicken" /></div>
+          <div class="form-group full">
+            <label>Categories (pick all that apply)</label>
+            <div class="cat-picker" id="stock-new-cat-picker">
+              <span class="cat-pill" data-cat="Dinner" onclick="toggleCat(this)">Dinner</span>
+              <span class="cat-pill" data-cat="Pasta" onclick="toggleCat(this)">Pasta</span>
+              <span class="cat-pill" data-cat="Dessert" onclick="toggleCat(this)">Dessert</span>
+              <span class="cat-pill" data-cat="Lunch" onclick="toggleCat(this)">Lunch</span>
+              <span class="cat-pill" data-cat="Breakfast" onclick="toggleCat(this)">Breakfast</span>
+              <span class="cat-pill" data-cat="Side" onclick="toggleCat(this)">Side</span>
+            </div>
+          </div>
+          <div class="form-group full"><label>Ingredients (comma separated) *</label><textarea id="stock-new-ingredients" rows="3" placeholder="e.g. Chicken Breast, Garlic, Butter, Cream..."></textarea></div>
+          <div class="form-group"><label>Link (Instagram, YouTube...)</label><input type="text" id="stock-new-link" placeholder="https://..." /></div>
+          <div class="form-group"><label>Notes</label><input type="text" id="stock-new-notes" placeholder="Tips or reminders..." /></div>
+          <div class="form-group full"><label>Pairs with (for Sides — enter recipe name exactly, comma separated)</label><input type="text" id="stock-new-pairswith" placeholder="e.g. Dry Rub Chicken, Smashed Burgers" /></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-secondary" onclick="clearStockForm()">Clear</button>
+          <button class="btn btn-primary" onclick="addStockRecipe()">Save stock recipe</button>
+        </div>
+      </div>
+      <div class="recipe-grid" id="admin-stock-grid"></div>
+    </div>
+
+    <div id="admin-tab-activity" style="display:none;">
+      <div id="admin-activity-wrap"><p style="color:var(--text-muted);font-size:13px;">Loading…</p></div>
+    </div>
   </div>
 
 </main>
@@ -640,9 +658,31 @@ async function submitPassphrase(){
 }
 
 function signOut(){
+  stopHeartbeat();
   localStorage.removeItem('tkl_passphrase');
   localStorage.removeItem('tkl_namespace');
   location.reload();
+}
+
+// ── Session heartbeat (activity tracking) ───────────────────────────────
+let _heartbeatInterval=null;
+function sendHeartbeat(){
+  if(!_passphrase) return;
+  fetch(`${API}/heartbeat`,{method:'PUT',headers:{'X-Passphrase':_passphrase}}).catch(()=>{});
+}
+function onVisibilityChange(){
+  if(document.visibilityState==='visible') sendHeartbeat();
+}
+function startHeartbeat(){
+  if(_heartbeatInterval) return;
+  if(document.visibilityState==='visible') sendHeartbeat();
+  _heartbeatInterval=setInterval(()=>{ if(document.visibilityState==='visible') sendHeartbeat(); },60000);
+  document.addEventListener('visibilitychange',onVisibilityChange);
+}
+function stopHeartbeat(){
+  clearInterval(_heartbeatInterval);
+  _heartbeatInterval=null;
+  document.removeEventListener('visibilitychange',onVisibilityChange);
 }
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const LUNCH_ROTATIONS=['Sweetcorn & Tuna Dip — crackers','Egg & Sardines Dip — crackers','Tomato Paste & Cucumbers — crackers','Ham & Cheese — bread or crackers','Bean Salad with lettuce'];
@@ -694,6 +734,7 @@ async function loadData(){
     _isAdmin=(_namespace==='costa');
     document.getElementById('nav-btn-admin').style.display=_isAdmin?'':'none';
     hidePassphraseModal();
+    startHeartbeat();
   }catch(e){
     hidePassphraseModal();
     stockRecipes=[]; userRecipes=[]; overlays={}; recipes=[];
@@ -1104,6 +1145,87 @@ function addRecipe(){
 function clearForm(){
   ['new-name','new-ingredients','new-notes','new-link','new-pairswith'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('#new-cat-picker .cat-pill').forEach(p=>p.classList.remove('selected'));
+}
+
+// ── Admin — Activity dashboard (costa only) ──────────────────────────────
+let _adminActivityData=null;
+let _adminActivitySort={col:'namespace', dir:'asc'};
+
+function showAdminTab(tab){
+  document.getElementById('admin-tab-btn-stock').classList.toggle('active', tab==='stock');
+  document.getElementById('admin-tab-btn-activity').classList.toggle('active', tab==='activity');
+  document.getElementById('admin-tab-stock').style.display = tab==='stock' ? '' : 'none';
+  document.getElementById('admin-tab-activity').style.display = tab==='activity' ? '' : 'none';
+  if(tab==='activity') loadAdminActivity();
+}
+
+async function loadAdminActivity(){
+  const wrap=document.getElementById('admin-activity-wrap');
+  wrap.innerHTML='<p style="color:var(--text-muted);font-size:13px;">Loading…</p>';
+  try{
+    const res=await fetch(`${API}/admin/analytics`,{headers:{'X-Passphrase':_passphrase}});
+    if(!res.ok){ wrap.innerHTML='<p style="color:var(--text-muted);font-size:13px;">Failed to load activity data.</p>'; return; }
+    _adminActivityData=await res.json();
+    renderAdminActivity();
+  }catch(e){
+    wrap.innerHTML='<p style="color:var(--text-muted);font-size:13px;">Failed to load activity data — check connection.</p>';
+  }
+}
+
+function fmtDuration(totalSeconds){
+  if(!totalSeconds) return '0m';
+  const h=Math.floor(totalSeconds/3600), m=Math.round((totalSeconds%3600)/60);
+  return h>0 ? `${h}h ${m}m` : `${m}m`;
+}
+function fmtLastActive(iso){
+  if(!iso) return 'Never';
+  return new Date(iso).toLocaleString('en-GB',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});
+}
+
+const ADMIN_ACTIVITY_COLS=[
+  {key:'namespace', label:'Namespace'},
+  {key:'totalLogins', label:'Total Logins'},
+  {key:'lastActive', label:'Last Active'},
+  {key:'totalSessionTime', label:'Total Time Spent'},
+  {key:'avgSessionLength', label:'Avg Session'},
+  {key:'recipesAdded', label:'Recipes Added'},
+  {key:'totalCooksLogged', label:'Cooks Logged'},
+];
+
+function sortAdminActivity(col){
+  if(_adminActivitySort.col===col){ _adminActivitySort.dir = _adminActivitySort.dir==='asc' ? 'desc' : 'asc'; }
+  else{ _adminActivitySort={col, dir: col==='namespace' ? 'asc' : 'desc'}; }
+  renderAdminActivity();
+}
+
+function renderAdminActivity(){
+  const wrap=document.getElementById('admin-activity-wrap');
+  if(!_adminActivityData) return;
+  const rows=Object.entries(_adminActivityData).map(([namespace, a])=>({ namespace, ...a }));
+  const {col, dir}=_adminActivitySort;
+  rows.sort((a,b)=>{
+    if(col==='namespace'){
+      const av=String(a.namespace).toLowerCase(), bv=String(b.namespace).toLowerCase();
+      return dir==='asc' ? av.localeCompare(bv) : bv.localeCompare(av);
+    }
+    let av=a[col], bv=b[col];
+    if(col==='lastActive'){ av=av?new Date(av).getTime():0; bv=bv?new Date(bv).getTime():0; }
+    return dir==='asc' ? av-bv : bv-av;
+  });
+  const arrow=(key)=> col===key ? `<span class="sort-arrow">${dir==='asc'?'▲':'▼'}</span>` : '';
+  wrap.innerHTML=`<table class="log-table">
+    <thead><tr>${ADMIN_ACTIVITY_COLS.map(c=>`<th class="sortable" onclick="sortAdminActivity('${c.key}')">${c.label}${arrow(c.key)}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map(r=>`
+      <tr>
+        <td>${r.namespace}</td>
+        <td>${r.totalLogins}</td>
+        <td>${fmtLastActive(r.lastActive)}</td>
+        <td>${fmtDuration(r.totalSessionTime)}</td>
+        <td>${fmtDuration(r.avgSessionLength)}</td>
+        <td>${r.recipesAdded}</td>
+        <td>${r.totalCooksLogged}</td>
+      </tr>`).join('')}</tbody>
+  </table>`;
 }
 
 // ── Admin (stock recipe management, costa only) ─────────────────────────────
