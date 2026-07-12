@@ -691,6 +691,7 @@ const FRESH=['fresh','lemon','lime','tomato','parsley','coriander','basil','mint
 
 let recipes=[], stockRecipes=[], userRecipes=[], overlays={}, plan=[], planHistory=[], shoppingChecked={}, lastSeenStockTimestamp=null, activeModalId=null, recipeFilter=null, planTickIdx=null;
 let _saveTimer=null;
+let _dataLoadFailed=false;
 
 function remergeRecipes(){
   const mergedStock=stockRecipes.map(sr=>{
@@ -719,7 +720,13 @@ async function loadData(){
   try{
     const res=await fetch(`${API}/data`,{headers:{'X-Passphrase':_passphrase}});
     if(res.status===401){ localStorage.removeItem('tkl_passphrase'); localStorage.removeItem('tkl_namespace'); _passphrase=null; _namespace=null; showPassphraseModal(); return; }
-    if(!res.ok){ hidePassphraseModal(); showToast('Failed to load data — try refreshing'); renderAll(); return; }
+    if(!res.ok){
+      console.error('loadData: GET /data failed', res.status);
+      hidePassphraseModal(); _dataLoadFailed=true;
+      showToast('Failed to load data — try refreshing');
+      renderAll();
+      return;
+    }
     const d=await res.json();
     stockRecipes=d.stockRecipes||[];
     userRecipes=d.userRecipes||[];
@@ -731,11 +738,13 @@ async function loadData(){
     shoppingChecked=d.shoppingChecked||{};
     lastSeenStockTimestamp=d.lastSeenStockTimestamp||new Date().toISOString();
     _isAdmin=(_namespace==='costa');
+    _dataLoadFailed=false;
     document.getElementById('nav-btn-admin').style.display=_isAdmin?'':'none';
     hidePassphraseModal();
     startHeartbeat();
   }catch(e){
-    hidePassphraseModal();
+    console.error('loadData: fetch threw', e);
+    hidePassphraseModal(); _dataLoadFailed=true;
     stockRecipes=[]; userRecipes=[]; overlays={}; recipes=[];
     plan=[]; shoppingChecked={};
     showToast('Offline — could not load recipes');
@@ -865,6 +874,7 @@ function renderRecipes(){
     else f.sort((a,b)=>a.name.localeCompare(b.name));
   }
   const grid=document.getElementById('recipe-grid');
+  if(!f.length && _dataLoadFailed){grid.innerHTML='<div class="empty-state"><div class="empty-icon">&#9888;&#65039;</div>Couldn\'t load your recipes — check your connection and refresh</div>';return;}
   if(!f.length){grid.innerHTML='<div class="empty-state"><div class="empty-icon">&#127859;</div>No recipes found</div>';return;}
   grid.innerHTML=f.map(r=>`
     <div class="recipe-card" onclick="openModal(${typeof r.id==='string'?`'${r.id}'`:r.id})">
