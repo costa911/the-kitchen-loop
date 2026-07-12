@@ -752,30 +752,41 @@ async function loadData(){
   renderAll();
   if(stockRecipes.length) checkForNewStockRecipes(stockRecipes, lastSeenStockTimestamp);
 }
+function deriveUserData(recipesArr){
+  const userRecipes=recipesArr.filter(r=>!r.isStock).map(({isStock, proteinCategory, ...rest})=>rest);
+  const overlays={};
+  recipesArr.filter(r=>r.isStock).forEach(r=>{
+    const ov={};
+    if(r.cookDates && r.cookDates.length) ov.cookDates=r.cookDates;
+    if(r.personalNotes) ov.personalNotes=r.personalNotes;
+    if(Object.keys(ov).length) overlays[r.id]=ov;
+  });
+  return {userRecipes, overlays};
+}
+
+// Immediate (non-debounced) save used for explicit, one-shot actions (delete, edit save)
+// where the UI must not commit an optimistic change until the backend confirms it.
+async function saveDataNow(recipesArr){
+  const {userRecipes, overlays}=deriveUserData(recipesArr);
+  try{
+    const res=await fetch(`${API}/data`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify({userRecipes,overlays,plan,planHistory,shoppingChecked,lastSeenStockTimestamp})});
+    if(!res.ok){ showToast('Save failed — check connection'); return false; }
+    return true;
+  }catch(e){ showToast('Save failed — check connection'); return false; }
+}
+
 function saveData(){
   clearTimeout(_saveTimer);
-  _saveTimer=setTimeout(async()=>{
-    userRecipes=recipes.filter(r=>!r.isStock).map(({isStock, proteinCategory, ...rest})=>rest);
-    overlays={};
-    recipes.filter(r=>r.isStock).forEach(r=>{
-      const ov={};
-      if(r.cookDates && r.cookDates.length) ov.cookDates=r.cookDates;
-      if(r.personalNotes) ov.personalNotes=r.personalNotes;
-      if(Object.keys(ov).length) overlays[r.id]=ov;
-    });
-    try{
-      const res=await fetch(`${API}/data`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify({userRecipes,overlays,plan,planHistory,shoppingChecked,lastSeenStockTimestamp})});
-      if(!res.ok) showToast('Save failed — check connection');
-    }catch(e){ showToast('Save failed — check connection'); }
-  },500);
+  _saveTimer=setTimeout(()=>{ saveDataNow(recipes); },500);
 }
 function saveR(){ saveData(); }
 function saveP(){ saveData(); }
 function saveS(){ saveData(); }
 
-async function saveStockEdit(){
+async function saveStockEdit(candidateStock){
+  const payload=candidateStock||stockRecipes;
   try{
-    const res=await fetch(`${API}/stock`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify(stockRecipes)});
+    const res=await fetch(`${API}/stock`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify(payload)});
     if(!res.ok){ showToast('Stock save failed — check connection'); return false; }
     return true;
   }catch(e){ showToast('Stock save failed — check connection'); return false; }
@@ -1087,9 +1098,10 @@ async function saveEdit(){
   const r=recipes.find(x=>x.id===activeModalId); if(!r) return;
 
   if(r.isStock && !_isAdmin){
-    r.personalNotes=document.getElementById('edit-notes').value.trim();
-    r.notes=r.personalNotes || r.canonicalNotes;
-    saveR(); renderAll(); openModal(activeModalId); showToast('Personal notes updated!');
+    const personalNotes=document.getElementById('edit-notes').value.trim();
+    const candidate=recipes.map(x=>x.id===r.id?{...x, personalNotes, notes: personalNotes||x.canonicalNotes}:x);
+    const ok=await saveDataNow(candidate);
+    if(ok){ recipes=candidate; renderAll(); openModal(activeModalId); showToast('Personal notes updated!'); }
     return;
   }
 
@@ -1097,22 +1109,24 @@ async function saveEdit(){
   const ingredients=document.getElementById('edit-ingredients').value.trim();
   if(!name||!ingredients){showToast('Name and ingredients required');return;}
   const cats=[...document.querySelectorAll('#edit-cat-picker .cat-pill.selected')].map(p=>p.dataset.cat);
-  r.name=name; r.tags=cats.length?cats.join(', '):'Dinner';
-  r.ingredients=ingredients; r.link=document.getElementById('edit-link').value.trim();
+  const tags=cats.length?cats.join(', '):'Dinner';
+  const link=document.getElementById('edit-link').value.trim();
   const notes=document.getElementById('edit-notes').value.trim();
-  r.pairsWith=document.getElementById('edit-pairswith').value.trim();
+  const pairsWith=document.getElementById('edit-pairswith').value.trim();
 
   if(_isAdmin && r.isStock){
-    r.notes=notes; r.canonicalNotes=notes;
-    const stockR=stockRecipes.find(s=>s.id===r.id);
-    if(stockR){ stockR.name=name; stockR.tags=r.tags; stockR.ingredients=ingredients; stockR.link=r.link; stockR.notes=notes; stockR.pairsWith=r.pairsWith; }
-    const ok=await saveStockEdit();
-    remergeRecipes(); renderAll(); if(ok){ openModal(activeModalId); showToast('Stock recipe updated!'); }
+    const candidateStock=stockRecipes.map(s=>s.id===r.id?{...s, name, tags, ingredients, link, notes, pairsWith}:s);
+    const ok=await saveStockEdit(candidateStock);
+    if(ok){
+      stockRecipes=candidateStock;
+      remergeRecipes(); renderAll(); openModal(activeModalId); showToast('Stock recipe updated!');
+    }
     return;
   }
 
-  r.notes=notes;
-  saveR(); renderAll(); openModal(activeModalId); showToast('Recipe updated!');
+  const candidate=recipes.map(x=>x.id===r.id?{...x, name, tags, ingredients, link, notes, pairsWith}:x);
+  const ok=await saveDataNow(candidate);
+  if(ok){ recipes=candidate; renderAll(); openModal(activeModalId); showToast('Recipe updated!'); }
 }
 
 async function deleteCurrentRecipe(){
@@ -1122,14 +1136,15 @@ async function deleteCurrentRecipe(){
   if(!confirm('Delete this recipe? Cannot be undone.')) return;
 
   if(_isAdmin && r.isStock){
-    stockRecipes=stockRecipes.filter(s=>s.id!==r.id);
-    const ok=await saveStockEdit();
-    remergeRecipes(); closeModal(); renderAll();
-    if(ok) showToast('Stock recipe deleted');
+    const candidateStock=stockRecipes.filter(s=>s.id!==r.id);
+    const ok=await saveStockEdit(candidateStock);
+    if(ok){ stockRecipes=candidateStock; remergeRecipes(); closeModal(); renderAll(); showToast('Stock recipe deleted'); }
     return;
   }
 
-  recipes=recipes.filter(r=>r.id!==activeModalId); saveR(); closeModal(); renderAll(); showToast('Recipe deleted');
+  const candidate=recipes.filter(x=>x.id!==activeModalId);
+  const ok=await saveDataNow(candidate);
+  if(ok){ recipes=candidate; closeModal(); renderAll(); showToast('Recipe deleted'); }
 }
 
 function toggleCat(el){ el.classList.toggle('selected'); }
@@ -1257,13 +1272,13 @@ function openAdminModal(id){
   openModal(id);
 }
 
-function addStockRecipe(){
+async function addStockRecipe(){
   const name=document.getElementById('stock-new-name').value.trim();
   const ingredients=document.getElementById('stock-new-ingredients').value.trim();
   if(!name||!ingredients){showToast('Name and ingredients are required');return;}
   const cats=[...document.querySelectorAll('#stock-new-cat-picker .cat-pill.selected')].map(p=>p.dataset.cat);
   const nextNum=Math.max(0, ...stockRecipes.map(r=>parseInt(r.id.split('-')[1],10)||0))+1;
-  stockRecipes.push({
+  const candidateStock=[...stockRecipes, {
     id: `stock-${nextNum}`,
     name, tags: cats.length?cats.join(', '):'Dinner', ingredients,
     notes: document.getElementById('stock-new-notes').value.trim(),
@@ -1271,11 +1286,13 @@ function addStockRecipe(){
     pairsWith: document.getElementById('stock-new-pairswith').value.trim(),
     isStock: true,
     addedDate: new Date().toISOString(),
-  });
-  saveStockEdit().then(ok=>{
+  }];
+  const ok=await saveStockEdit(candidateStock);
+  if(ok){
+    stockRecipes=candidateStock;
     remergeRecipes(); clearStockForm(); renderAll();
-    if(ok) showToast('Stock recipe saved!');
-  });
+    showToast('Stock recipe saved!');
+  }
 }
 
 function clearStockForm(){
