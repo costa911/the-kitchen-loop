@@ -618,7 +618,6 @@ const API='https://kitchen-loop-api.costa911.workers.dev';
 let _passphrase=localStorage.getItem('tkl_passphrase')||null;
 let _namespace=localStorage.getItem('tkl_namespace')||null;
 let _isAdmin=false;
-let _adminEditMode=false;
 let _newStockCutoff=null;
 
 function showPassphraseModal(){
@@ -1007,13 +1006,13 @@ function openModal(id){
   document.getElementById('btn-cooked-it').style.display='';
   document.getElementById('cook-confirm-prompt').style.display='none';
   document.getElementById('cook-date-picker-wrap').style.display='none';
-  document.getElementById('btn-delete-recipe').style.display=(r.isStock && !_adminEditMode)?'none':'';
+  document.getElementById('btn-delete-recipe').style.display=(r.isStock && !_isAdmin)?'none':'';
   document.getElementById('modal-view').style.display='block';
   document.getElementById('modal-edit').style.display='none';
   document.getElementById('recipe-modal').classList.add('open');
 }
 
-function closeModal(){ document.getElementById('recipe-modal').classList.remove('open'); activeModalId=null; _adminEditMode=false; }
+function closeModal(){ document.getElementById('recipe-modal').classList.remove('open'); activeModalId=null; }
 function handleModalClick(e){ if(e.target===document.getElementById('recipe-modal')) closeModal(); }
 
 function logCook(){
@@ -1058,7 +1057,7 @@ function doLogCook(dateISO){
 
 function switchToEdit(){
   const r=recipes.find(x=>x.id===activeModalId); if(!r) return;
-  const lockedDown=r.isStock && !_adminEditMode;
+  const lockedDown=r.isStock && !_isAdmin;
   document.getElementById('edit-canonical-fields').style.display=lockedDown?'none':'';
   document.getElementById('edit-notes-label').textContent=lockedDown?'Your personal notes':'Notes';
   document.getElementById('edit-name').value=r.name;
@@ -1077,7 +1076,7 @@ function switchToView(){ document.getElementById('modal-view').style.display='bl
 async function saveEdit(){
   const r=recipes.find(x=>x.id===activeModalId); if(!r) return;
 
-  if(r.isStock && !_adminEditMode){
+  if(r.isStock && !_isAdmin){
     r.personalNotes=document.getElementById('edit-notes').value.trim();
     r.notes=r.personalNotes || r.canonicalNotes;
     saveR(); renderAll(); openModal(activeModalId); showToast('Personal notes updated!');
@@ -1093,7 +1092,7 @@ async function saveEdit(){
   const notes=document.getElementById('edit-notes').value.trim();
   r.pairsWith=document.getElementById('edit-pairswith').value.trim();
 
-  if(_adminEditMode && r.isStock){
+  if(_isAdmin && r.isStock){
     r.notes=notes; r.canonicalNotes=notes;
     const stockR=stockRecipes.find(s=>s.id===r.id);
     if(stockR){ stockR.name=name; stockR.tags=r.tags; stockR.ingredients=ingredients; stockR.link=r.link; stockR.notes=notes; stockR.pairsWith=r.pairsWith; }
@@ -1109,10 +1108,10 @@ async function saveEdit(){
 async function deleteCurrentRecipe(){
   if(!activeModalId) return;
   const r=recipes.find(x=>x.id===activeModalId); if(!r) return;
-  if(r.isStock && !_adminEditMode){ showToast('Stock recipes can only be deleted from Admin'); return; }
+  if(r.isStock && !_isAdmin){ showToast('Stock recipes can only be deleted from Admin'); return; }
   if(!confirm('Delete this recipe? Cannot be undone.')) return;
 
-  if(_adminEditMode && r.isStock){
+  if(_isAdmin && r.isStock){
     stockRecipes=stockRecipes.filter(s=>s.id!==r.id);
     const ok=await saveStockEdit();
     remergeRecipes(); closeModal(); renderAll();
@@ -1245,7 +1244,6 @@ function renderAdminStockList(){
 }
 
 function openAdminModal(id){
-  _adminEditMode=true;
   openModal(id);
 }
 
