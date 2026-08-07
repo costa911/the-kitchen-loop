@@ -588,6 +588,14 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="link-clicks-modal" onclick="handleLinkClicksModalClick(event)">
+  <div class="sides-popup" style="max-width:480px;">
+    <button class="modal-close" onclick="closeLinkClicksModal()">&#215;</button>
+    <h2 id="lc-title" style="padding-right:2rem;">Link Clicks</h2>
+    <div id="lc-body" style="max-height:400px;overflow-y:auto;"></div>
+  </div>
+</div>
+
 <div class="print-wrapper" id="print-wrapper" style="display:none;">
   <div id="pdf-page"></div>
 </div>
@@ -1023,7 +1031,14 @@ function openModal(id){
   const nw=document.getElementById('mv-notes-wrap');
   if(r.notes){document.getElementById('mv-notes').textContent=r.notes;nw.style.display='block';}else{nw.style.display='none';}
   const lnk=document.getElementById('mv-link');
-  if(r.link){lnk.href=r.link;lnk.style.display='inline-flex';}else{lnk.style.display='none';}
+  if(r.link){
+    lnk.href=r.link;
+    lnk.style.display='inline-flex';
+    lnk.onclick=()=>{ fetch(`${API}/link-click`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify({recipeId:r.id,recipeName:r.name,link:r.link})}).catch(()=>{}); };
+  }else{
+    lnk.style.display='none';
+    lnk.onclick=null;
+  }
   document.getElementById('btn-cooked-it').style.display='';
   document.getElementById('cook-confirm-prompt').style.display='none';
   document.getElementById('cook-date-picker-wrap').style.display='none';
@@ -1214,6 +1229,7 @@ const ADMIN_ACTIVITY_COLS=[
   {key:'avgSessionLength', label:'Avg Session'},
   {key:'recipesAdded', label:'Recipes Added'},
   {key:'totalCooksLogged', label:'Cooks Logged'},
+  {key:'linkClicks', label:'Link Clicks'},
 ];
 
 function sortAdminActivity(col){
@@ -1248,9 +1264,24 @@ function renderAdminActivity(){
         <td>${fmtDuration(r.avgSessionLength)}</td>
         <td>${r.recipesAdded}</td>
         <td>${r.totalCooksLogged}</td>
+        <td><span class="cook-num-link" style="cursor:pointer;" onclick="openLinkClicksModal('${r.namespace}')">${r.linkClicks}</span></td>
       </tr>`).join('')}</tbody>
   </table>`;
 }
+
+function openLinkClicksModal(namespace){
+  const a=_adminActivityData && _adminActivityData[namespace];
+  if(!a) return;
+  document.getElementById('lc-title').textContent=`Link Clicks — ${namespace}`;
+  const clicks=[...(a.linkClickDetail||[])].sort((x,y)=>new Date(y.timestamp)-new Date(x.timestamp));
+  document.getElementById('lc-body').innerHTML = clicks.length ? `<table class="log-table">
+    <thead><tr><th>Recipe</th><th>Clicked</th></tr></thead>
+    <tbody>${clicks.map(c=>`<tr><td>${c.recipeName}</td><td>${fmtLastActive(c.timestamp)}</td></tr>`).join('')}</tbody>
+  </table>` : '<p style="color:var(--text-muted);font-size:13px;">No link clicks yet.</p>';
+  document.getElementById('link-clicks-modal').classList.add('open');
+}
+function closeLinkClicksModal(){ document.getElementById('link-clicks-modal').classList.remove('open'); }
+function handleLinkClicksModalClick(e){ if(e.target===document.getElementById('link-clicks-modal')) closeLinkClicksModal(); }
 
 // ── Admin (stock recipe management, costa only) ─────────────────────────────
 
