@@ -70,6 +70,7 @@
     .tag.lunch { background: #e8f1ff; color: #1a4fa0; border-color: transparent; }
     .tag.breakfast { background: #fff8e1; color: #8b6500; border-color: transparent; }
     .tag.side { background: #f0ede8; color: #6b5a3e; border-color: transparent; }
+    .tag.dressing { background: #e5f5f3; color: #0f6e63; border-color: transparent; }
     .tag.stock { background: #fff4e0; color: #8b5a00; border-color: transparent; }
     .plan-side-note { font-size: 10px; color: #6b5a3e; background: #f0ede8; border-radius: 4px; padding: 2px 6px; margin-top: 4px; display: inline-block; }
     .cook-count { font-size: 11px; color: var(--text-faint); margin-top: 4px; }
@@ -341,6 +342,7 @@
         <option value="Lunch">Lunch</option>
         <option value="Breakfast">Breakfast</option>
         <option value="Side">Side</option>
+        <option value="Dressing">Dressing</option>
       </select>
       <select id="sort-filter" onchange="renderRecipes()">
         <option value="name">Sort: A–Z</option>
@@ -390,6 +392,7 @@
             <span class="cat-pill" data-cat="Lunch" onclick="toggleCat(this)">Lunch</span>
             <span class="cat-pill" data-cat="Breakfast" onclick="toggleCat(this)">Breakfast</span>
             <span class="cat-pill" data-cat="Side" onclick="toggleCat(this)">Side</span>
+            <span class="cat-pill" data-cat="Dressing" onclick="toggleCat(this)">Dressing</span>
           </div>
         </div>
         <div class="form-group full"><label>Ingredients (comma separated) *</label><textarea id="new-ingredients" rows="3" placeholder="e.g. Chicken Breast, Garlic, Butter, Cream..."></textarea></div>
@@ -465,6 +468,7 @@
               <span class="cat-pill" data-cat="Lunch" onclick="toggleCat(this)">Lunch</span>
               <span class="cat-pill" data-cat="Breakfast" onclick="toggleCat(this)">Breakfast</span>
               <span class="cat-pill" data-cat="Side" onclick="toggleCat(this)">Side</span>
+              <span class="cat-pill" data-cat="Dressing" onclick="toggleCat(this)">Dressing</span>
             </div>
           </div>
           <div class="form-group full"><label>Ingredients (comma separated) *</label><textarea id="stock-new-ingredients" rows="3" placeholder="e.g. Chicken Breast, Garlic, Butter, Cream..."></textarea></div>
@@ -529,6 +533,7 @@
             <span class="cat-pill" data-cat="Lunch" onclick="toggleCat(this)">Lunch</span>
             <span class="cat-pill" data-cat="Breakfast" onclick="toggleCat(this)">Breakfast</span>
             <span class="cat-pill" data-cat="Side" onclick="toggleCat(this)">Side</span>
+            <span class="cat-pill" data-cat="Dressing" onclick="toggleCat(this)">Dressing</span>
           </div>
         </div>
         <div class="edit-group"><label>Ingredients</label><textarea id="edit-ingredients" rows="3"></textarea></div>
@@ -693,7 +698,7 @@ function stopHeartbeat(){
 }
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const LUNCH_ROTATIONS=['Sweetcorn & Tuna Dip — crackers','Egg & Sardines Dip — crackers','Tomato Paste & Cucumbers — crackers','Ham & Cheese — bread or crackers','Bean Salad with lettuce'];
-const CAT_ICONS={'Dinner':'🍽️','Pasta':'🍝','Dessert':'🍰','Lunch':'🥗','Breakfast':'🍳','Side':'🥗'};
+const CAT_ICONS={'Dinner':'🍽️','Pasta':'🍝','Dessert':'🍰','Lunch':'🥗','Breakfast':'🍳','Side':'🥗','Dressing':'🥣'};
 const STAPLES=new Set(['Garlic','Onion','Olive Oil','Worcestershire Sauce','Worchestire Sauce','Milk','Any Mustard','Mustard','Soy Sauce','Black Pepper','Black Peppercorn','Cardamom','Cinnamon','Cloves','Aniseed','Fennel Seeds','Fish Sauce','Chilli','Grated Cheese','Pasta','Baking Powder','Cacao','Canned Chickpeas','Salt','Frozen Corn','Frozen Green Beans','Frozen Peas','Peanut Butter','Sesame Oil','Sesame Seeds','Sriracha','Siracha','Egg Noodles','Anchovies','Bay Leaves','Bay Leaf','Canned Tomatoes','Passata','Tomato Passata','Chicken Stock','Beef Stock','Vegetable Stock','Fish Stock','Cumin','Kunserva','Polenta','Red Wine','Eggs','Tahini','Mayonnaise','Ketchup','BBQ Sauce','Paprika Sweet','Paprika Smokey','Cous Cous','Canned Butter Beans','Canned Kidney Beans','Canned Tuna','Curry Powder','Panko Breadcrumbs','Balsamic Vinegar','Flour','Cornflour','Greek Yogurt','Nutmeg','Coconut Milk','Canned Coconut Milk','Dry Lentils','Turmeric','Garam Masala','Green Pesto','Red Pesto','Water','Rice Wine Vinegar','Baking Soda']);
 const FRESH=['fresh','lemon','lime','tomato','parsley','coriander','basil','mint','ginger','spring onion','cucumber','lettuce','carrot','celery','leek','potato','courgette','aubergine','broccoli','cauliflower','kale','spinach','mushroom','pepper','apple','bread','butter','cream','fish','chicken','beef','lamb','pork','sausage','salmon','white fish','mince','chorizo','pancetta','gammon','bacon','rotisserie','ricotta','feta','cheddar','parmesan','kefalyori','provolone','hard cheese','dumplings','frozen pepper','frozen spinach','frozen mushroom'];
 
@@ -868,7 +873,7 @@ function clearRecipeFilter(){
   renderRecipes();
 }
 
-function tc(t){ const m={'Dinner':'dinner','Pasta':'pasta','Dessert':'dessert','Lunch':'lunch','Breakfast':'breakfast','Side':'side'}; return m[t.trim()]||''; }
+function tc(t){ const m={'Dinner':'dinner','Pasta':'pasta','Dessert':'dessert','Lunch':'lunch','Breakfast':'breakfast','Side':'side','Dressing':'dressing'}; return m[t.trim()]||''; }
 
 function renderRecipes(){
   let f;
@@ -998,7 +1003,7 @@ function adjustCook(id, delta){
 }
 
 function renderCategories(){
-  const cats=['Dinner','Pasta','Dessert','Lunch','Breakfast','Side'];
+  const cats=['Dinner','Pasta','Dessert','Lunch','Breakfast','Side','Dressing'];
   const c=document.getElementById('cat-grid');
   c.innerHTML=cats.map(cat=>{
     const count=recipes.filter(r=>r.tags.split(',').map(t=>t.trim()).includes(cat)).length;
@@ -1369,10 +1374,11 @@ function viewNewStockRecipes(){
 }
 
 function isSide(r){ return r.tags.split(',').map(t=>t.trim()).includes('Side'); }
+function isDressing(r){ return r.tags.split(',').map(t=>t.trim()).includes('Dressing'); }
 
 function generatePlan(){
   const isDessert=r=>r.tags.split(',').map(t=>t.trim()).includes('Dessert');
-  const dinners=recipes.filter(r=>!isDessert(r)&&!isSide(r));
+  const dinners=recipes.filter(r=>!isDessert(r)&&!isSide(r)&&!isDressing(r));
   const desserts=recipes.filter(r=>isDessert(r));
   if(dinners.length<14){showToast('Need at least 14 non-dessert, non-side recipes');return;}
   const sd=[...dinners].sort(()=>Math.random()-0.5);
