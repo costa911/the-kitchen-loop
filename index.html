@@ -130,6 +130,9 @@
     .btn-primary:hover { opacity: 0.85; }
     .btn-secondary { background: transparent; color: var(--text); border-color: var(--border); }
     .btn-secondary:hover { background: var(--bg); }
+    .btn-icon { display: inline-flex; align-items: center; justify-content: center; padding: 8px 10px; background: transparent; color: var(--text-muted); border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s; }
+    .btn-icon:hover { background: var(--bg); color: var(--text); }
+    .btn-icon svg { width: 16px; height: 16px; display: block; }
     .btn-danger { background: transparent; color: var(--danger); border-color: var(--border); }
     .btn-danger:hover { background: #fff0f0; }
     .btn-cook { background: var(--accent-light); color: var(--accent-text); border-color: transparent; font-weight: 600; padding: 8px 16px; }
@@ -396,7 +399,9 @@
           </div>
         </div>
         <div class="form-group full"><label>Ingredients (comma separated) *</label><textarea id="new-ingredients" rows="3" placeholder="e.g. Chicken Breast, Garlic, Butter, Cream..."></textarea></div>
-        <div class="form-group"><label>Link (Instagram, YouTube...)</label><input type="text" id="new-link" placeholder="https://..." /></div>
+        <div class="form-group"><label>Instagram post link</label><input type="text" id="new-instagram-link" placeholder="https://..." /></div>
+        <div class="form-group"><label>TikTok post link</label><input type="text" id="new-tiktok-link" placeholder="https://..." /></div>
+        <div class="form-group"><label>Threads post link</label><input type="text" id="new-threads-link" placeholder="https://..." /></div>
         <div class="form-group"><label>Notes</label><input type="text" id="new-notes" placeholder="Tips or reminders..." /></div>
         <div class="form-group full"><label>Pairs with (for Sides — enter recipe name exactly, comma separated)</label><input type="text" id="new-pairswith" placeholder="e.g. Dry Rub Chicken, Smashed Burgers" /></div>
       </div>
@@ -472,7 +477,9 @@
             </div>
           </div>
           <div class="form-group full"><label>Ingredients (comma separated) *</label><textarea id="stock-new-ingredients" rows="3" placeholder="e.g. Chicken Breast, Garlic, Butter, Cream..."></textarea></div>
-          <div class="form-group"><label>Link (Instagram, YouTube...)</label><input type="text" id="stock-new-link" placeholder="https://..." /></div>
+          <div class="form-group"><label>Instagram post link</label><input type="text" id="stock-new-instagram-link" placeholder="https://..." /></div>
+          <div class="form-group"><label>TikTok post link</label><input type="text" id="stock-new-tiktok-link" placeholder="https://..." /></div>
+          <div class="form-group"><label>Threads post link</label><input type="text" id="stock-new-threads-link" placeholder="https://..." /></div>
           <div class="form-group"><label>Notes</label><input type="text" id="stock-new-notes" placeholder="Tips or reminders..." /></div>
           <div class="form-group full"><label>Pairs with (for Sides — enter recipe name exactly, comma separated)</label><input type="text" id="stock-new-pairswith" placeholder="e.g. Dry Rub Chicken, Smashed Burgers" /></div>
         </div>
@@ -515,7 +522,15 @@
       <p class="modal-ingredients" id="mv-ingredients"></p>
       <div id="mv-notes-wrap" style="display:none"><div class="modal-sec-label">Notes</div><p class="modal-notes-box" id="mv-notes"></p></div>
       <div class="modal-actions">
-        <a id="mv-link" href="#" target="_blank" class="btn btn-secondary" style="display:none;text-decoration:none;">View original &#8599;</a>
+        <a id="mv-link-instagram" href="#" target="_blank" rel="noopener" title="View on Instagram" class="btn btn-icon" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg>
+        </a>
+        <a id="mv-link-tiktok" href="#" target="_blank" rel="noopener" title="View on TikTok" class="btn btn-icon" style="display:none">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 3c.3 1.9 1.6 3.3 3.5 3.6v2.6a6.7 6.7 0 0 1-3.5-1v6.6a5.7 5.7 0 1 1-5.7-5.7c.3 0 .6 0 .9.1v2.7a3 3 0 1 0 2.1 2.9V3h2.7z"/></svg>
+        </a>
+        <a id="mv-link-threads" href="#" target="_blank" rel="noopener" title="View on Threads" class="btn btn-icon" style="display:none">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 3.5c-3 1-4.5 3.7-4.5 7 0 5 3 9.5 8 9.9 4.5.3 7.7-2.4 8-6 .2-2.6-1.1-4.3-3.2-4.3-1.7 0-2.7 1-2.9 2.6-.1 1.1 0 2.3-.1 3.4-.1 1.7-1 2.8-2.6 2.8-1.5 0-2.4-1-2.4-2.3 0-1.5 1.2-2.3 3-2.4"/></svg>
+        </a>
         <button class="btn btn-secondary" onclick="switchToEdit()">&#9998; Edit</button>
         <button class="btn btn-danger" id="btn-delete-recipe" onclick="deleteCurrentRecipe()">Delete</button>
       </div>
@@ -537,7 +552,9 @@
           </div>
         </div>
         <div class="edit-group"><label>Ingredients</label><textarea id="edit-ingredients" rows="3"></textarea></div>
-        <div class="edit-group"><label>Link</label><input type="text" id="edit-link" /></div>
+        <div class="edit-group"><label>Instagram post link</label><input type="text" id="edit-instagram-link" placeholder="https://..." /></div>
+        <div class="edit-group"><label>TikTok post link</label><input type="text" id="edit-tiktok-link" placeholder="https://..." /></div>
+        <div class="edit-group"><label>Threads post link</label><input type="text" id="edit-threads-link" placeholder="https://..." /></div>
         <div class="edit-group"><label>Pairs with (for Sides — enter recipe name exactly, comma separated)</label><input type="text" id="edit-pairswith" placeholder="e.g. Dry Rub Chicken, Smashed Burgers" /></div>
       </div>
       <div class="edit-group"><label id="edit-notes-label">Notes</label><input type="text" id="edit-notes" /></div>
@@ -711,7 +728,7 @@ function remergeRecipes(){
     const ov=(overlays && overlays[sr.id])||{};
     return {
       id: sr.id, name: sr.name, tags: sr.tags, ingredients: sr.ingredients,
-      link: sr.link||'', pairsWith: sr.pairsWith||'',
+      instagramLink: sr.instagramLink||'', tiktokLink: sr.tiktokLink||'', threadsLink: sr.threadsLink||'', pairsWith: sr.pairsWith||'',
       canonicalNotes: sr.notes||'', personalNotes: ov.personalNotes||'',
       notes: ov.personalNotes || sr.notes || '',
       cookDates: ov.cookDates ? [...ov.cookDates] : [],
@@ -1025,6 +1042,18 @@ function browseCategory(cat){
   renderRecipes();
 }
 
+function setupLinkBtn(elId, url, r, platform){
+  const el=document.getElementById(elId);
+  if(url){
+    el.href=url;
+    el.style.display='inline-flex';
+    el.onclick=()=>{ fetch(`${API}/link-click`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify({recipeId:r.id,recipeName:r.name,link:url,platform})}).catch(()=>{}); };
+  }else{
+    el.style.display='none';
+    el.onclick=null;
+  }
+}
+
 function openModal(id){
   const r=recipes.find(x=>x.id===id); if(!r) return;
   activeModalId=id;
@@ -1035,15 +1064,9 @@ function openModal(id){
   document.getElementById('mv-ingredients').textContent=r.ingredients;
   const nw=document.getElementById('mv-notes-wrap');
   if(r.notes){document.getElementById('mv-notes').textContent=r.notes;nw.style.display='block';}else{nw.style.display='none';}
-  const lnk=document.getElementById('mv-link');
-  if(r.link){
-    lnk.href=r.link;
-    lnk.style.display='inline-flex';
-    lnk.onclick=()=>{ fetch(`${API}/link-click`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify({recipeId:r.id,recipeName:r.name,link:r.link})}).catch(()=>{}); };
-  }else{
-    lnk.style.display='none';
-    lnk.onclick=null;
-  }
+  setupLinkBtn('mv-link-instagram', r.instagramLink, r, 'instagram');
+  setupLinkBtn('mv-link-tiktok', r.tiktokLink, r, 'tiktok');
+  setupLinkBtn('mv-link-threads', r.threadsLink, r, 'threads');
   document.getElementById('btn-cooked-it').style.display='';
   document.getElementById('cook-confirm-prompt').style.display='none';
   document.getElementById('cook-date-picker-wrap').style.display='none';
@@ -1103,7 +1126,9 @@ function switchToEdit(){
   document.getElementById('edit-notes-label').textContent=lockedDown?'Your personal notes':'Notes';
   document.getElementById('edit-name').value=r.name;
   document.getElementById('edit-ingredients').value=r.ingredients;
-  document.getElementById('edit-link').value=r.link||'';
+  document.getElementById('edit-instagram-link').value=r.instagramLink||'';
+  document.getElementById('edit-tiktok-link').value=r.tiktokLink||'';
+  document.getElementById('edit-threads-link').value=r.threadsLink||'';
   document.getElementById('edit-notes').value=lockedDown?(r.personalNotes||''):(r.notes||'');
   document.getElementById('edit-pairswith').value=r.pairsWith||'';
   const cur=r.tags.split(',').map(t=>t.trim());
@@ -1130,12 +1155,14 @@ async function saveEdit(){
   if(!name||!ingredients){showToast('Name and ingredients required');return;}
   const cats=[...document.querySelectorAll('#edit-cat-picker .cat-pill.selected')].map(p=>p.dataset.cat);
   const tags=cats.length?cats.join(', '):'Dinner';
-  const link=document.getElementById('edit-link').value.trim();
+  const instagramLink=document.getElementById('edit-instagram-link').value.trim();
+  const tiktokLink=document.getElementById('edit-tiktok-link').value.trim();
+  const threadsLink=document.getElementById('edit-threads-link').value.trim();
   const notes=document.getElementById('edit-notes').value.trim();
   const pairsWith=document.getElementById('edit-pairswith').value.trim();
 
   if(_isAdmin && r.isStock){
-    const candidateStock=stockRecipes.map(s=>s.id===r.id?{...s, name, tags, ingredients, link, notes, pairsWith}:s);
+    const candidateStock=stockRecipes.map(s=>s.id===r.id?{...s, name, tags, ingredients, instagramLink, tiktokLink, threadsLink, notes, pairsWith}:s);
     const ok=await saveStockEdit(candidateStock);
     if(ok){
       stockRecipes=candidateStock;
@@ -1144,7 +1171,7 @@ async function saveEdit(){
     return;
   }
 
-  const candidate=recipes.map(x=>x.id===r.id?{...x, name, tags, ingredients, link, notes, pairsWith}:x);
+  const candidate=recipes.map(x=>x.id===r.id?{...x, name, tags, ingredients, instagramLink, tiktokLink, threadsLink, notes, pairsWith}:x);
   const ok=await saveDataNow(candidate);
   if(ok){ recipes=candidate; renderAll(); openModal(activeModalId); showToast('Recipe updated!'); }
 }
@@ -1182,12 +1209,12 @@ function addRecipe(){
   const ingredients=document.getElementById('new-ingredients').value.trim();
   if(!name||!ingredients){showToast('Name and ingredients are required');return;}
   const cats=[...document.querySelectorAll('#new-cat-picker .cat-pill.selected')].map(p=>p.dataset.cat);
-  recipes.push({id:Date.now(),name,tags:cats.length?cats.join(', '):'Dinner',ingredients,notes:document.getElementById('new-notes').value.trim(),link:document.getElementById('new-link').value.trim(),pairsWith:document.getElementById('new-pairswith').value.trim(),cookDates:[]});
+  recipes.push({id:Date.now(),name,tags:cats.length?cats.join(', '):'Dinner',ingredients,notes:document.getElementById('new-notes').value.trim(),instagramLink:document.getElementById('new-instagram-link').value.trim(),tiktokLink:document.getElementById('new-tiktok-link').value.trim(),threadsLink:document.getElementById('new-threads-link').value.trim(),pairsWith:document.getElementById('new-pairswith').value.trim(),cookDates:[]});
   saveR(); clearForm(); renderAll(); showToast('Recipe saved!'); showView('recipes');
 }
 
 function clearForm(){
-  ['new-name','new-ingredients','new-notes','new-link','new-pairswith'].forEach(id=>document.getElementById(id).value='');
+  ['new-name','new-ingredients','new-notes','new-instagram-link','new-tiktok-link','new-threads-link','new-pairswith'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('#new-cat-picker .cat-pill').forEach(p=>p.classList.remove('selected'));
 }
 
@@ -1318,7 +1345,9 @@ async function addStockRecipe(){
     id: `stock-${nextNum}`,
     name, tags: cats.length?cats.join(', '):'Dinner', ingredients,
     notes: document.getElementById('stock-new-notes').value.trim(),
-    link: document.getElementById('stock-new-link').value.trim(),
+    instagramLink: document.getElementById('stock-new-instagram-link').value.trim(),
+    tiktokLink: document.getElementById('stock-new-tiktok-link').value.trim(),
+    threadsLink: document.getElementById('stock-new-threads-link').value.trim(),
     pairsWith: document.getElementById('stock-new-pairswith').value.trim(),
     isStock: true,
     addedDate: new Date().toISOString(),
@@ -1332,7 +1361,7 @@ async function addStockRecipe(){
 }
 
 function clearStockForm(){
-  ['stock-new-name','stock-new-ingredients','stock-new-notes','stock-new-link','stock-new-pairswith'].forEach(id=>document.getElementById(id).value='');
+  ['stock-new-name','stock-new-ingredients','stock-new-notes','stock-new-instagram-link','stock-new-tiktok-link','stock-new-threads-link','stock-new-pairswith'].forEach(id=>document.getElementById(id).value='');
   document.querySelectorAll('#stock-new-cat-picker .cat-pill').forEach(p=>p.classList.remove('selected'));
 }
 
