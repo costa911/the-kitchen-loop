@@ -228,6 +228,11 @@
     .side-dinner { font-size: 11px; color: var(--text-muted); }
     .side-name { font-weight: 500; }
 
+    /* Changelog popup */
+    .changelog-entry { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 8px; font-size: 13px; line-height: 1.5; }
+    .changelog-entry:last-child { margin-bottom: 0; }
+    .changelog-date { font-size: 11px; font-weight: 600; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+
     .toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--text); color: var(--surface); padding: 10px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; z-index: 200; opacity: 0; transform: translateY(6px); transition: opacity 0.25s, transform 0.25s; pointer-events: none; }
     .toast.show { opacity: 1; transform: translateY(0); }
     .hint { font-size: 12px; color: var(--text-muted); background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 14px; margin-top: 1rem; line-height: 1.6; }
@@ -644,6 +649,16 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="changelog-modal" onclick="handleChangelogModalClick(event)">
+  <div class="sides-popup" style="max-width:460px;">
+    <h2>&#10024; What's new</h2>
+    <div id="changelog-entries"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="closeChangelogModal()">Got it</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="link-clicks-modal" onclick="handleLinkClicksModalClick(event)">
   <div class="sides-popup" style="max-width:480px;">
     <button class="modal-close" onclick="closeLinkClicksModal()">&#215;</button>
@@ -747,6 +762,13 @@ function stopHeartbeat(){
   _heartbeatInterval=null;
   document.removeEventListener('visibilitychange',onVisibilityChange);
 }
+// Newest first. `version` is just an incrementing "have you seen up to this number" counter,
+// not semver — add new entries here, nothing else needs to change to announce a feature.
+const CHANGELOG = [
+  { version: 2, date: '2026-09-20', text: "You can now copy your shopping list straight to Notion (paste it in and get real checkboxes) or share it via text/WhatsApp." },
+  { version: 1, date: '2026-09-20', text: "Added Custom List — pick individual recipes for a one-off shop instead of the full fortnightly plan." }
+];
+
 const DAYS=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
 const LUNCH_ROTATIONS=['Sweetcorn & Tuna Dip — crackers','Egg & Sardines Dip — crackers','Tomato Paste & Cucumbers — crackers','Ham & Cheese — bread or crackers','Bean Salad with lettuce'];
 const CAT_ICONS={'Dinner':'🍽️','Pasta':'🍝','Dessert':'🍰','Lunch':'🥗','Breakfast':'🍳','Side':'🥗','Dressing':'🥣'};
@@ -756,6 +778,7 @@ const FRESH=['fresh','lemon','lime','tomato','parsley','coriander','basil','mint
 let recipes=[], stockRecipes=[], userRecipes=[], overlays={}, plan=[], planHistory=[], shoppingChecked={}, lastSeenStockTimestamp=null, activeModalId=null, recipeFilter=null, planTickIdx=null;
 let customListRecipeIds=[], customListShoppingChecked={}, customListCreatedAt=null;
 let currentShoppingTab='plan';
+let lastSeenChangelogVersion=0;
 let _saveTimer=null;
 let _customListSaveTimer=null;
 let _dataLoadFailed=false;
@@ -807,6 +830,7 @@ async function loadData(){
     customListShoppingChecked=(d.customList&&d.customList.shoppingChecked)||{};
     customListCreatedAt=(d.customList&&d.customList.createdAt)||null;
     lastSeenStockTimestamp=d.lastSeenStockTimestamp||new Date().toISOString();
+    lastSeenChangelogVersion=d.lastSeenChangelogVersion||0;
     _isAdmin=(_namespace==='costa');
     _dataLoadFailed=false;
     document.getElementById('nav-btn-admin').style.display=_isAdmin?'':'none';
@@ -818,10 +842,14 @@ async function loadData(){
     stockRecipes=[]; userRecipes=[]; overlays={}; recipes=[];
     plan=[]; shoppingChecked={};
     customListRecipeIds=[]; customListShoppingChecked={}; customListCreatedAt=null;
+    lastSeenChangelogVersion=0;
     showToast('Offline — could not load recipes');
   }
   renderAll();
-  if(stockRecipes.length) checkForNewStockRecipes(stockRecipes, lastSeenStockTimestamp);
+  // Changelog takes priority over the new-recipe popup — checkForNewStockRecipes only
+  // runs here if the changelog had nothing unseen to show; otherwise closeChangelogModal()
+  // chains into it once the changelog is dismissed, so the two never stack.
+  if(!_dataLoadFailed && !checkForChangelog() && stockRecipes.length) checkForNewStockRecipes(stockRecipes, lastSeenStockTimestamp);
 }
 function deriveUserData(recipesArr){
   const userRecipes=recipesArr.filter(r=>!r.isStock).map(({isStock, proteinCategory, ...rest})=>rest);
@@ -1424,6 +1452,37 @@ function clearStockForm(){
 // ── New stock recipe notification ────────────────────────────────────────────
 
 let _pendingLastSeen=null;
+
+// Reuses the "New recipe!" popup's shell, but tracks lastSeenChangelogVersion completely
+// independently of lastSeenStockTimestamp — dismissing one must never mark the other seen.
+function checkForChangelog(){
+  const unseen=CHANGELOG.filter(c=>c.version>lastSeenChangelogVersion);
+  if(!unseen.length) return false;
+  document.getElementById('changelog-entries').innerHTML=unseen.map(c=>`
+    <div class="changelog-entry">
+      <div class="changelog-date">${new Date(c.date).toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})}</div>
+      <div>${c.text}</div>
+    </div>`).join('');
+  document.getElementById('changelog-modal').classList.add('open');
+  return true;
+}
+
+function handleChangelogModalClick(e){ if(e.target===document.getElementById('changelog-modal')) closeChangelogModal(); }
+
+function closeChangelogModal(){
+  document.getElementById('changelog-modal').classList.remove('open');
+  const newVersion=CHANGELOG[0].version;
+  lastSeenChangelogVersion=newVersion;
+  saveChangelogSeen(newVersion);
+  // Only now check the new-recipe popup, so the two never show stacked at once.
+  if(stockRecipes.length) checkForNewStockRecipes(stockRecipes, lastSeenStockTimestamp);
+}
+
+async function saveChangelogSeen(version){
+  try{
+    await fetch(`${API}/changelog-seen`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify({version})});
+  }catch(e){}
+}
 
 function checkForNewStockRecipes(stock, lastSeenISO){
   const fresh=stock.filter(r=>r.addedDate && r.addedDate>lastSeenISO);
