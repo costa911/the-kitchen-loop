@@ -464,7 +464,11 @@
   <div id="view-shopping" class="view">
     <div class="page-header">
       <div class="page-header-text"><h1>Shopping List</h1><p>Tick off what you have — then export a clean PDF for the fridge</p></div>
-      <button class="btn btn-primary" onclick="exportPDF(currentShoppingTab)" style="margin-left:auto;">&#128196; Export PDF</button>
+      <div style="display:flex;gap:8px;margin-left:auto;">
+        <button class="btn btn-secondary" onclick="copyShoppingList()">&#128203; Copy list</button>
+        <button id="shopping-share-btn" class="btn btn-secondary" onclick="shareShoppingList()" style="display:none;">&#128228; Share</button>
+        <button class="btn btn-primary" onclick="exportPDF(currentShoppingTab)">&#128196; Export PDF</button>
+      </div>
     </div>
     <div class="plan-tabs">
       <button id="shopping-tab-plan" class="plan-tab active" onclick="switchShoppingTab('plan')">Plan</button>
@@ -1908,6 +1912,50 @@ function exportPDF(mode){
   }, 200);
 }
 
+// Notion-flavored Markdown checklist of unticked items, grouped the same way the PDF is —
+// a section is omitted entirely (no empty "## " header) if everything in it is ticked.
+function buildShoppingMarkdown(mode){
+  const ids = mode==='plan' ? planShoppingRecipeIds() : customListRecipeIds;
+  const checked = mode==='plan' ? shoppingChecked : customListShoppingChecked;
+  const {big,fresh,staples} = aggregateIngredients(ids);
+  const section=(title,items)=>{
+    const unticked=items.filter(i=>!checked[i]);
+    return unticked.length ? `## ${title}\n${unticked.map(i=>`- [ ] ${i}`).join('\n')}` : '';
+  };
+  return [section('Big Shop',big),section('Fresh Top-ups',fresh),section('Staples to Check',staples)].filter(Boolean).join('\n\n');
+}
+
+function shoppingListEmptyGuard(mode){
+  if(mode==='plan' && !plan.length){ showToast('Generate a plan first'); return true; }
+  if(mode==='custom' && !customListRecipeIds.length){ showToast('Add recipes to your custom list first'); return true; }
+  return false;
+}
+
+async function copyShoppingList(){
+  const mode=currentShoppingTab;
+  if(shoppingListEmptyGuard(mode)) return;
+  const md=buildShoppingMarkdown(mode);
+  if(!md){ showToast('Nothing left to buy — all ticked off!'); return; }
+  try{
+    await navigator.clipboard.writeText(md);
+    showToast('Copied — paste into Notion, Messages, anywhere');
+  }catch(e){
+    showToast('Copy failed — check clipboard permissions');
+  }
+}
+
+async function shareShoppingList(){
+  const mode=currentShoppingTab;
+  if(shoppingListEmptyGuard(mode)) return;
+  const md=buildShoppingMarkdown(mode);
+  if(!md){ showToast('Nothing left to buy — all ticked off!'); return; }
+  try{
+    await navigator.share({ text: md });
+  }catch(e){
+    // Share sheet dismissed/cancelled by the user — nothing to surface.
+  }
+}
+
 // ── Stats Dashboard ──────────────────────────────────────────────────────────
 
 const PROTEIN_RULES = [
@@ -2072,6 +2120,8 @@ function renderStatsDashboard() {
 }
 
 document.getElementById('passphrase-input').addEventListener('keydown',e=>{ if(e.key==='Enter') submitPassphrase(); });
+
+if(navigator.share) document.getElementById('shopping-share-btn').style.display='';
 
 loadData();
 </script>
