@@ -177,6 +177,19 @@
     .plan-history-card.plan-cooked { background: var(--accent-light); border-color: #c8e6c9; }
     .plan-history-card.plan-cooked .plan-recipe { text-decoration: line-through; opacity: 0.6; }
 
+    /* Custom list */
+    .custom-list-search-wrap { position: relative; max-width: 420px; margin-bottom: 1.25rem; }
+    .custom-list-search-results { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-md); max-height: 240px; overflow-y: auto; z-index: 20; display: none; }
+    .custom-list-search-results.open { display: block; }
+    .custom-list-search-result { padding: 8px 12px; font-size: 13px; cursor: pointer; }
+    .custom-list-search-result:hover { background: var(--bg); }
+    .custom-list-search-result.disabled { color: var(--text-faint); cursor: default; }
+    .custom-list-search-result.disabled:hover { background: none; }
+    .custom-list-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .custom-list-chip { display: flex; align-items: center; gap: 6px; background: var(--accent-light); border: 1px solid var(--accent); color: var(--accent-text); border-radius: 20px; padding: 6px 8px 6px 14px; font-size: 13px; font-weight: 500; }
+    .custom-list-chip button { background: none; border: none; color: inherit; cursor: pointer; font-size: 16px; line-height: 1; padding: 0 2px; display: flex; align-items: center; opacity: 0.7; }
+    .custom-list-chip button:hover { opacity: 1; }
+
     /* Shopping */
     .shopping-section { margin-bottom: 2rem; }
     .shopping-section h3 { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding-bottom: 10px; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
@@ -419,6 +432,7 @@
     <div class="plan-tabs">
       <button id="plan-tab-active" class="plan-tab active" onclick="switchPlanTab('active')">Active</button>
       <button id="plan-tab-history" class="plan-tab" onclick="switchPlanTab('history')">History</button>
+      <button id="plan-tab-custom" class="plan-tab" onclick="switchPlanTab('custom')">Custom List</button>
     </div>
     <div id="plan-active-content">
       <div class="plan-actions">
@@ -432,13 +446,29 @@
     <div id="plan-history-content" style="display:none">
       <div id="plan-history-container"></div>
     </div>
+    <div id="plan-custom-content" style="display:none">
+      <div class="plan-actions">
+        <button class="btn btn-secondary" onclick="buildCustomShoppingList()">&#8594; Build shopping list</button>
+        <button class="btn btn-secondary" onclick="archiveCustomList()">&#128230; Archive list</button>
+        <button class="btn btn-danger" onclick="clearCustomList()">Clear list</button>
+      </div>
+      <div class="custom-list-search-wrap">
+        <input type="text" id="custom-list-search" placeholder="Search by name or ingredient..." oninput="renderCustomListSearch()" onfocus="renderCustomListSearch()" autocomplete="off" />
+        <div id="custom-list-search-results" class="custom-list-search-results"></div>
+      </div>
+      <div id="custom-list-chips" class="custom-list-chips"></div>
+    </div>
   </div>
 
   <!-- SHOPPING -->
   <div id="view-shopping" class="view">
     <div class="page-header">
       <div class="page-header-text"><h1>Shopping List</h1><p>Tick off what you have — then export a clean PDF for the fridge</p></div>
-      <button class="btn btn-primary" onclick="exportPDF()" style="margin-left:auto;">&#128196; Export PDF</button>
+      <button class="btn btn-primary" onclick="exportPDF(currentShoppingTab)" style="margin-left:auto;">&#128196; Export PDF</button>
+    </div>
+    <div class="plan-tabs">
+      <button id="shopping-tab-plan" class="plan-tab active" onclick="switchShoppingTab('plan')">Plan</button>
+      <button id="shopping-tab-custom" class="plan-tab" onclick="switchShoppingTab('custom')">Custom List</button>
     </div>
     <div id="shopping-container"></div>
   </div>
@@ -720,7 +750,10 @@ const STAPLES=new Set(['Garlic','Onion','Olive Oil','Worcestershire Sauce','Worc
 const FRESH=['fresh','lemon','lime','tomato','parsley','coriander','basil','mint','ginger','spring onion','cucumber','lettuce','carrot','celery','leek','potato','courgette','aubergine','broccoli','cauliflower','kale','spinach','mushroom','pepper','apple','bread','butter','cream','fish','chicken','beef','lamb','pork','sausage','salmon','white fish','mince','chorizo','pancetta','gammon','bacon','rotisserie','ricotta','feta','cheddar','parmesan','kefalyori','provolone','hard cheese','dumplings','frozen pepper','frozen spinach','frozen mushroom'];
 
 let recipes=[], stockRecipes=[], userRecipes=[], overlays={}, plan=[], planHistory=[], shoppingChecked={}, lastSeenStockTimestamp=null, activeModalId=null, recipeFilter=null, planTickIdx=null;
+let customListRecipeIds=[], customListShoppingChecked={}, customListCreatedAt=null;
+let currentShoppingTab='plan';
 let _saveTimer=null;
+let _customListSaveTimer=null;
 let _dataLoadFailed=false;
 
 function remergeRecipes(){
@@ -766,6 +799,9 @@ async function loadData(){
     plan.forEach(p=>{if(p.cooked===undefined)p.cooked=false;if(p.cookedDate===undefined)p.cookedDate=null;});
     planHistory=d.planHistory||[];
     shoppingChecked=d.shoppingChecked||{};
+    customListRecipeIds=(d.customList&&d.customList.recipeIds)||[];
+    customListShoppingChecked=(d.customList&&d.customList.shoppingChecked)||{};
+    customListCreatedAt=(d.customList&&d.customList.createdAt)||null;
     lastSeenStockTimestamp=d.lastSeenStockTimestamp||new Date().toISOString();
     _isAdmin=(_namespace==='costa');
     _dataLoadFailed=false;
@@ -777,6 +813,7 @@ async function loadData(){
     hidePassphraseModal(); _dataLoadFailed=true;
     stockRecipes=[]; userRecipes=[]; overlays={}; recipes=[];
     plan=[]; shoppingChecked={};
+    customListRecipeIds=[]; customListShoppingChecked={}; customListCreatedAt=null;
     showToast('Offline — could not load recipes');
   }
   renderAll();
@@ -813,6 +850,21 @@ function saveR(){ saveData(); }
 function saveP(){ saveData(); }
 function saveS(){ saveData(); }
 
+// Custom list lives in its own worker-side record (PUT /custom-list), independent of the
+// /data document the fortnightly plan and its shopping ticks are saved through — so the two
+// lists never race or clobber each other's saves.
+async function saveCustomListNow(){
+  try{
+    const res=await fetch(`${API}/custom-list`,{method:'PUT',headers:{'Content-Type':'application/json','X-Passphrase':_passphrase},body:JSON.stringify({recipeIds:customListRecipeIds,shoppingChecked:customListShoppingChecked})});
+    if(!res.ok){ showToast('Save failed — check connection'); return false; }
+    return true;
+  }catch(e){ showToast('Save failed — check connection'); return false; }
+}
+function saveCustomList(){
+  clearTimeout(_customListSaveTimer);
+  _customListSaveTimer=setTimeout(()=>{ saveCustomListNow(); },500);
+}
+
 async function saveStockEdit(candidateStock){
   const payload=candidateStock||stockRecipes;
   try{
@@ -822,7 +874,7 @@ async function saveStockEdit(candidateStock){
   }catch(e){ showToast('Stock save failed — check connection'); return false; }
 }
 
-function renderAll(){ renderStats(); renderRecipes(); renderCookLog(); renderCategories(); renderPlan(); renderPlanHistory(); renderShopping(); renderStatsDashboard(); renderAdminStockList(); }
+function renderAll(){ renderStats(); renderRecipes(); renderCookLog(); renderCategories(); renderPlan(); renderPlanHistory(); renderCustomListChips(); renderShopping(); renderStatsDashboard(); renderAdminStockList(); }
 
 function getCookDaySet(){
   const days=new Set();
@@ -1512,11 +1564,90 @@ function addAllSides(){
 function clearPlan(){ plan=[]; saveP(); renderPlan(); showToast('Plan cleared'); }
 function removePlanItem(i){ plan.splice(i,1); saveP(); renderPlan(); }
 
+// ── Custom shopping list (pick-your-own-recipes) ────────────────────────────
+function ridArg(id){ return typeof id==='string'?`'${id.replace(/'/g,"\\'")}'`:id; }
+
+function renderCustomListSearch(){
+  const input=document.getElementById('custom-list-search');
+  const box=document.getElementById('custom-list-search-results');
+  const q=input.value.trim().toLowerCase();
+  if(!q){ box.classList.remove('open'); box.innerHTML=''; return; }
+  const matches=recipes.filter(r=>!customListRecipeIds.includes(r.id)&&(r.name.toLowerCase().includes(q)||r.ingredients.toLowerCase().includes(q))).sort((a,b)=>a.name.localeCompare(b.name)).slice(0,8);
+  box.innerHTML=matches.length
+    ? matches.map(r=>`<div class="custom-list-search-result" onclick="addToCustomList(${ridArg(r.id)})">${r.name}</div>`).join('')
+    : '<div class="custom-list-search-result disabled">No matching recipes</div>';
+  box.classList.add('open');
+}
+
+function addToCustomList(id){
+  if(!customListRecipeIds.includes(id)) customListRecipeIds.push(id);
+  const input=document.getElementById('custom-list-search');
+  input.value=''; input.focus();
+  const box=document.getElementById('custom-list-search-results');
+  box.classList.remove('open'); box.innerHTML='';
+  saveCustomList();
+  renderCustomListChips();
+}
+
+function removeFromCustomList(id){
+  customListRecipeIds=customListRecipeIds.filter(x=>x!==id);
+  saveCustomList();
+  renderCustomListChips();
+}
+
+function renderCustomListChips(){
+  const c=document.getElementById('custom-list-chips'); if(!c) return;
+  if(!customListRecipeIds.length){ c.innerHTML='<div class="empty-state" style="grid-column:unset"><div class="empty-icon">&#128722;</div>Search above to add recipes to your custom list</div>'; return; }
+  c.innerHTML=customListRecipeIds.map(id=>{
+    const r=recipes.find(x=>x.id===id);
+    return `<div class="custom-list-chip">${r?r.name:'Unknown recipe'}<button onclick="removeFromCustomList(${ridArg(id)})" title="Remove">&#215;</button></div>`;
+  }).join('');
+}
+
+function buildCustomShoppingList(){
+  if(!customListRecipeIds.length){ showToast('Add at least one recipe first'); return; }
+  saveCustomList();
+  switchShoppingTab('custom');
+  showView('shopping');
+}
+
+async function archiveCustomList(){
+  if(!customListRecipeIds.length){ showToast('No active custom list to archive'); return; }
+  // Flush any pending debounced save first — otherwise it could land after the archive
+  // resets the server's customList and silently resurrect the just-archived recipes.
+  clearTimeout(_customListSaveTimer);
+  if(!(await saveCustomListNow())) return;
+  let res;
+  try{ res=await fetch(`${API}/custom-list/archive`,{method:'PUT',headers:{'X-Passphrase':_passphrase}}); }
+  catch(e){ showToast('Archive failed — check connection'); return; }
+  if(!res.ok){ showToast('Archive failed — check connection'); return; }
+  const body=await res.json();
+  planHistory.unshift(body.entry);
+  customListRecipeIds=[]; customListShoppingChecked={}; customListCreatedAt=null;
+  renderPlanHistory(); renderCustomListChips(); renderShopping();
+  switchPlanTab('history');
+  showToast('Custom list archived!');
+}
+
+async function clearCustomList(){
+  // Cancel any pending debounced save so it can't land after this and resurrect stale chips.
+  clearTimeout(_customListSaveTimer);
+  let res;
+  try{ res=await fetch(`${API}/custom-list/clear`,{method:'PUT',headers:{'X-Passphrase':_passphrase}}); }
+  catch(e){ showToast('Clear failed — check connection'); return; }
+  if(!res.ok){ showToast('Clear failed — check connection'); return; }
+  customListRecipeIds=[]; customListShoppingChecked={}; customListCreatedAt=null;
+  renderCustomListChips(); renderShopping();
+  showToast('Custom list cleared');
+}
+
 function switchPlanTab(tab){
   document.getElementById('plan-tab-active').classList.toggle('active',tab==='active');
   document.getElementById('plan-tab-history').classList.toggle('active',tab==='history');
+  document.getElementById('plan-tab-custom').classList.toggle('active',tab==='custom');
   document.getElementById('plan-active-content').style.display=tab==='active'?'':'none';
   document.getElementById('plan-history-content').style.display=tab==='history'?'':'none';
+  document.getElementById('plan-custom-content').style.display=tab==='custom'?'':'none';
 }
 
 function tickPlanMeal(idx){
@@ -1543,13 +1674,26 @@ function archivePlan(){
 
 function renderPlanHistory(){
   const c=document.getElementById('plan-history-container'); if(!c) return;
-  if(!planHistory.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">&#128203;</div>No archived plans yet — archive your active plan to see it here</div>';return;}
+  if(!planHistory.length){c.innerHTML='<div class="empty-state"><div class="empty-icon">&#128203;</div>No archived plans yet — archive your active plan or custom list to see it here</div>';return;}
   c.innerHTML=planHistory.map((ph,hi)=>{
+    if(ph.type==='custom'){
+      const total=ph.entries.length;
+      return `<div class="plan-history-entry">
+        <div class="plan-history-header" onclick="toggleHistory(${hi})">
+          <span class="plan-history-label">&#128722; Custom List — ${ph.savedAt}</span>
+          <span class="plan-history-meta">${total} recipe${total===1?'':'s'}</span>
+          <span class="plan-history-toggle" id="ph-toggle-${hi}">&#9654;</span>
+        </div>
+        <div class="plan-history-body" id="ph-body-${hi}" style="display:none">
+          <div class="plan-grid" style="margin-top:0.75rem;">${ph.entries.map(e=>`<div class="plan-history-card"><div class="plan-recipe">${e.recipeName}</div></div>`).join('')}</div>
+        </div>
+      </div>`;
+    }
     const total=ph.entries.length;
     const cooked=ph.entries.filter(e=>e.cooked).length;
     return `<div class="plan-history-entry">
       <div class="plan-history-header" onclick="toggleHistory(${hi})">
-        <span class="plan-history-label">${ph.savedAt}</span>
+        <span class="plan-history-label">&#128197; Fortnightly Plan — ${ph.savedAt}</span>
         <span class="plan-history-meta">${cooked}/${total} cooked</span>
         <span class="plan-history-toggle" id="ph-toggle-${hi}">&#9654;</span>
       </div>
@@ -1630,65 +1774,83 @@ function renderPlan(){
   c.innerHTML=rw(1)+rw(2);
 }
 
-function savePlanAndShop(){ saveP(); renderShopping(); showView('shopping'); }
+function savePlanAndShop(){ saveP(); switchShoppingTab('plan'); showView('shopping'); }
 function isFresh(i){ const l=i.toLowerCase(); return FRESH.some(k=>l.includes(k)); }
+
+// The recipe-ID list backing each shopping tab: the fortnightly plan pulls dinner/dessert
+// recipes plus their paired sides, while the custom list is just whatever chips are picked.
+function planShoppingRecipeIds(){
+  const ids=[];
+  plan.filter(p=>p.type==='dinner'||p.type==='dessert').forEach(p=>{
+    if(p.recipeId!=null) ids.push(p.recipeId);
+    if(p.sideId) ids.push(p.sideId);
+  });
+  return ids;
+}
+function currentShoppingIds(){ return currentShoppingTab==='plan' ? planShoppingRecipeIds() : customListRecipeIds; }
+function currentShoppingChecked(){ return currentShoppingTab==='plan' ? shoppingChecked : customListShoppingChecked; }
+
+// Shared aggregation: given a list of recipe IDs, split their combined ingredients into
+// Big Shop / Fresh Top-ups / Staples — used by both the Plan tab and the Custom List tab.
+function aggregateIngredients(recipeIds){
+  const allIng=new Map();
+  recipeIds.forEach(id=>{
+    const r=recipes.find(x=>x.id===id); if(!r) return;
+    r.ingredients.split(',').forEach(ing=>{ const cl=ing.trim(); if(!allIng.has(cl)) allIng.set(cl,[]); allIng.get(cl).push(r.name); });
+  });
+  const toBuy=[],stapleCheck=[];
+  allIng.forEach((_,ing)=>{ if(STAPLES.has(ing)) stapleCheck.push(ing); else toBuy.push(ing); });
+  return { fresh:toBuy.filter(isFresh).sort(), big:toBuy.filter(i=>!isFresh(i)).sort(), staples:stapleCheck.sort() };
+}
+
+function switchShoppingTab(tab){
+  currentShoppingTab=tab;
+  document.getElementById('shopping-tab-plan').classList.toggle('active',tab==='plan');
+  document.getElementById('shopping-tab-custom').classList.toggle('active',tab==='custom');
+  renderShopping();
+}
 
 function renderShopping(){
   const c=document.getElementById('shopping-container');
-  if(!plan.length){c.innerHTML='<div class="empty-state" style="grid-column:unset"><div class="empty-icon">&#128722;</div>Generate a plan first</div>';return;}
-  const allIng=new Map();
-  plan.filter(p=>p.type==='dinner'||p.type==='dessert').forEach(p=>{
-    const r=recipes.find(x=>x.id===p.recipeId); if(!r) return;
-    r.ingredients.split(',').forEach(ing=>{ const cl=ing.trim(); if(!allIng.has(cl)) allIng.set(cl,[]); allIng.get(cl).push(r.name); });
-    if(p.sideId){ const sr=recipes.find(x=>x.id===p.sideId); if(sr) sr.ingredients.split(',').forEach(ing=>{ const cl=ing.trim(); if(!allIng.has(cl)) allIng.set(cl,[]); allIng.get(cl).push(sr.name); }); }
-  });
-  const toBuy=[],stapleCheck=[];
-  allIng.forEach((_,ing)=>{ if(STAPLES.has(ing)) stapleCheck.push(ing); else toBuy.push(ing); });
-  const fresh=toBuy.filter(isFresh).sort();
-  const big=toBuy.filter(i=>!isFresh(i)).sort();
-  stapleCheck.sort();
-  const ri=items=>`<div class="shopping-items">${items.map(i=>{const k=i.replace(/'/g,"\\'");return `<label class="shopping-item${shoppingChecked[i]?' checked':''}"><input type="checkbox" ${shoppingChecked[i]?'checked':''} onchange="toggleCheck('${k}',this.checked)" />${i}</label>`;}).join('')}</div>`;
+  const ids=currentShoppingIds();
+  if(!ids.length){
+    c.innerHTML=currentShoppingTab==='plan'
+      ? '<div class="empty-state" style="grid-column:unset"><div class="empty-icon">&#128722;</div>Generate a plan first</div>'
+      : '<div class="empty-state" style="grid-column:unset"><div class="empty-icon">&#128722;</div>Add recipes to your custom list first</div>';
+    return;
+  }
+  const {big,fresh,staples}=aggregateIngredients(ids);
+  const checked=currentShoppingChecked();
+  const ri=items=>`<div class="shopping-items">${items.map(i=>{const k=i.replace(/'/g,"\\'");return `<label class="shopping-item${checked[i]?' checked':''}"><input type="checkbox" ${checked[i]?'checked':''} onchange="toggleCheck('${k}',this.checked)" />${i}</label>`;}).join('')}</div>`;
   c.innerHTML=`
     <div class="shopping-section"><h3>Big shop <span class="shopping-count">${big.length}</span></h3>${ri(big)}</div>
     <div class="shopping-section"><h3>Fresh top-ups <span class="shopping-count">${fresh.length}</span></h3>${ri(fresh)}</div>
-    <div class="shopping-section"><h3>Staples to check <span class="shopping-count">${stapleCheck.length}</span></h3>${ri(stapleCheck)}</div>
+    <div class="shopping-section"><h3>Staples to check <span class="shopping-count">${staples.length}</span></h3>${ri(staples)}</div>
     <div style="margin-top:1rem;"><button class="btn btn-secondary" onclick="clearChecks()">Clear all ticks</button></div>`;
 }
 
-function toggleCheck(item,checked){ shoppingChecked[item]=checked; saveS(); document.querySelectorAll('.shopping-item').forEach(el=>{ if(el.textContent.trim()===item) el.classList.toggle('checked',checked); }); }
-function clearChecks(){ shoppingChecked={}; saveS(); renderShopping(); }
+function toggleCheck(item,checked){
+  currentShoppingChecked()[item]=checked;
+  if(currentShoppingTab==='plan') saveS(); else saveCustomList();
+  document.querySelectorAll('.shopping-item').forEach(el=>{ if(el.textContent.trim()===item) el.classList.toggle('checked',checked); });
+}
+function clearChecks(){
+  if(currentShoppingTab==='plan'){ shoppingChecked={}; saveS(); } else { customListShoppingChecked={}; saveCustomList(); }
+  renderShopping();
+}
 function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
 
-function exportPDF(){
-  if(!plan.length){ showToast('Generate a plan first'); return; }
+function exportPDF(mode){
+  mode = mode==='custom' ? 'custom' : 'plan';
+  if(mode==='plan' && !plan.length){ showToast('Generate a plan first'); return; }
+  if(mode==='custom' && !customListRecipeIds.length){ showToast('Add recipes to your custom list first'); return; }
 
-  // Build shopping data — unticked items only
-  const allIng=new Map();
-  plan.filter(p=>p.type==='dinner'||p.type==='dessert').forEach(p=>{
-    const r=recipes.find(x=>x.id===p.recipeId); if(!r) return;
-    r.ingredients.split(',').forEach(ing=>{ const cl=ing.trim(); if(!allIng.has(cl)) allIng.set(cl,[]); allIng.get(cl).push(r.name); });
-    if(p.sideId){ const sr=recipes.find(x=>x.id===p.sideId); if(sr) sr.ingredients.split(',').forEach(ing=>{ const cl=ing.trim(); if(!allIng.has(cl)) allIng.set(cl,[]); allIng.get(cl).push(sr.name); }); }
-  });
-  const toBuy=[],stapleCheck=[];
-  allIng.forEach((_,ing)=>{ if(STAPLES.has(ing)) stapleCheck.push(ing); else toBuy.push(ing); });
-  const fresh=toBuy.filter(isFresh).sort().filter(i=>!shoppingChecked[i]);
-  const big=toBuy.filter(i=>!isFresh(i)).sort().filter(i=>!shoppingChecked[i]);
-  const staples=stapleCheck.sort().filter(i=>!shoppingChecked[i]);
-
-  const renderWeek = w => {
-    const dinners=plan.filter(p=>p.week===w&&p.type==='dinner');
-    const lunch=plan.find(p=>p.week===w&&p.type==='lunch');
-    const dessert=plan.find(p=>p.week===w&&p.type==='dessert');
-    return `
-      <div>
-        <div class="pdf-week-title">Week ${w}</div>
-        ${dinners.map(p=>`<div class="pdf-day-row"><span class="pdf-day">${p.day.slice(0,3)}</span><span class="pdf-meal">${p.recipeName}${p.sideName?` <span style="color:#a09d96;font-size:10px;">+ ${p.sideName}</span>`:''}</span></div>`).join('')}
-        <div class="pdf-extras">
-          <div class="pdf-extra pdf-extra-lunch"><div class="pdf-extra-label">&#127828; Lunch</div><div class="pdf-extra-name">${lunch?lunch.recipeName:'—'}</div></div>
-          <div class="pdf-extra pdf-extra-dessert"><div class="pdf-extra-label">&#127874; Dessert</div><div class="pdf-extra-name">${dessert?dessert.recipeName:'—'}</div></div>
-        </div>
-      </div>`;
-  };
+  const ids = mode==='plan' ? planShoppingRecipeIds() : customListRecipeIds;
+  const checked = mode==='plan' ? shoppingChecked : customListShoppingChecked;
+  const {big,fresh,staples} = aggregateIngredients(ids);
+  const bigU=big.filter(i=>!checked[i]);
+  const freshU=fresh.filter(i=>!checked[i]);
+  const staplesU=staples.filter(i=>!checked[i]);
 
   const renderShopCol = (title, items) => `
     <div>
@@ -1697,19 +1859,44 @@ function exportPDF(){
     </div>`;
 
   const date = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+  const titleLabel = mode==='plan' ? 'Fortnightly Plan' : 'Custom List';
+
+  let mealSection;
+  if(mode==='plan'){
+    const renderWeek = w => {
+      const dinners=plan.filter(p=>p.week===w&&p.type==='dinner');
+      const lunch=plan.find(p=>p.week===w&&p.type==='lunch');
+      const dessert=plan.find(p=>p.week===w&&p.type==='dessert');
+      return `
+        <div>
+          <div class="pdf-week-title">Week ${w}</div>
+          ${dinners.map(p=>`<div class="pdf-day-row"><span class="pdf-day">${p.day.slice(0,3)}</span><span class="pdf-meal">${p.recipeName}${p.sideName?` <span style="color:#a09d96;font-size:10px;">+ ${p.sideName}</span>`:''}</span></div>`).join('')}
+          <div class="pdf-extras">
+            <div class="pdf-extra pdf-extra-lunch"><div class="pdf-extra-label">&#127828; Lunch</div><div class="pdf-extra-name">${lunch?lunch.recipeName:'—'}</div></div>
+            <div class="pdf-extra pdf-extra-dessert"><div class="pdf-extra-label">&#127874; Dessert</div><div class="pdf-extra-name">${dessert?dessert.recipeName:'—'}</div></div>
+          </div>
+        </div>`;
+    };
+    mealSection = `<div class="pdf-weeks">${renderWeek(1)}${renderWeek(2)}</div><hr class="pdf-divider" />`;
+  } else {
+    const names = customListRecipeIds.map(id=>{ const r=recipes.find(x=>x.id===id); return r?r.name:null; }).filter(Boolean);
+    mealSection = `
+      <div class="pdf-shop-section-title">Recipes in this list</div>
+      ${names.map(n=>`<div class="pdf-shop-item">${n}</div>`).join('')}
+      <hr class="pdf-divider" />`;
+  }
 
   document.getElementById('pdf-page').innerHTML = `
     <div class="pdf-header">
       <div class="pdf-logo"><div class="pdf-logo-dot"></div>The Kitchen Loop</div>
-      <div class="pdf-date">Generated ${date}</div>
+      <div class="pdf-date">Generated ${date} &mdash; ${titleLabel}</div>
     </div>
-    <div class="pdf-weeks">${renderWeek(1)}${renderWeek(2)}</div>
-    <hr class="pdf-divider" />
+    ${mealSection}
     <div class="pdf-shop-title">Shopping List — items still needed</div>
     <div class="pdf-shop-grid">
-      ${renderShopCol('Big Shop', big)}
-      ${renderShopCol('Fresh Top-ups', fresh)}
-      ${renderShopCol('Staples to Check', staples)}
+      ${renderShopCol('Big Shop', bigU)}
+      ${renderShopCol('Fresh Top-ups', freshU)}
+      ${renderShopCol('Staples to Check', staplesU)}
     </div>
     <div class="pdf-footer">The Kitchen Loop &mdash; thekitchenloop.com</div>
   `;
